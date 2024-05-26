@@ -102,7 +102,7 @@ def simulate(
     z = F @ x
 
     for t in range(max(tau_u, tau_y, 1), n_sampl):
-        x[:, [t]] = x[:, [t-1]] + T_s * (A @ p * np.sqrt(x[:, [t-1]]) + B @ q[:, [t-1-tau_u]] + np.random.randn(4,1)*noise_sigma*active_noise)
+        x[:, [t]] = x[:, [t-1]] + T_s * (A @ (p * np.sqrt(x[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + np.random.randn(4,1)*noise_sigma*active_noise)
         x[:, t] = np.clip(x[:, t], x_min, x_max)
         y[:, [t]] = C @ x[:, [t-tau_y]] + np.random.randn(4,1)*e_sigma*active_noise
         z[:, [t]] = F @ x[:, [t]]
