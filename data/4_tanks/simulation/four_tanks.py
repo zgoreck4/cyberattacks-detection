@@ -5,7 +5,7 @@ from typing import Tuple
 g = 981 # cm/s^2
 
 def simulate(
-    x0: float, 
+    x0: NDArray[np.float64], 
     x_max: float, 
     x_min: float, 
     gamma_a: float, 
@@ -96,7 +96,8 @@ def simulate(
         [0, 1, 0, 0]])
     
     x = np.empty((4, n_sampl))
-    x[:, 0:max(tau_u, tau_y, 1)] = x0
+    for i in range(len(x0)):
+        x[i, 0:max(tau_u, tau_y, 1)] = x0[i]
     y = np.empty((4, n_sampl))
     z = F @ x
 
