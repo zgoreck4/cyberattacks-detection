@@ -19,6 +19,7 @@ def simulate(
     tau_u: int=0, 
     tau_y: int=0,
     active_noise: bool=False,
+    qd: NDArray[np.float64]=np.array([0]),
     noise_sigma: float=0.1, 
     e_sigma: float=0.005
 ) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
@@ -56,8 +57,8 @@ def simulate(
         y delay
     active_noise: bool=False
         variable to enable noises
-    noise_sigma: float=0.1
-        noise sigma
+    qd: NDArray[np.float64]=np.array([0])
+        unknown flow
     e_sigma: float=0.005
         Measurement error
 
@@ -102,7 +103,7 @@ def simulate(
     z = F @ x
 
     for t in range(max(tau_u, tau_y, 1), n_sampl):
-        x[:, [t]] = x[:, [t-1]] + T_s * (A @ (p * np.sqrt(x[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + np.random.randn(4,1)*noise_sigma*active_noise)
+        x[:, [t]] = x[:, [t-1]] + T_s * (A @ (p * np.sqrt(x[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
         x[:, t] = np.clip(x[:, t], x_min, x_max)
         y[:, [t]] = C @ x[:, [t-tau_y]] + np.random.randn(4,1)*e_sigma*active_noise
         z[:, [t]] = F @ x[:, [t]]
