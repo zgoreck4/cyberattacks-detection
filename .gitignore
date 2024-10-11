@@ -28,3 +28,7 @@ img/
 
 # zip diles
 *.zip
+
+
+mlartifacts/
+mlruns/
