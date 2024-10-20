@@ -5,9 +5,9 @@ from typing import Tuple
 g = 981 # cm/s^2
 
 def simulate(
-    x0: NDArray[np.float64], 
-    x_max: float, 
-    x_min: float, 
+    h0: NDArray[np.float64], 
+    h_max: float, 
+    h_min: float, 
     gamma_a: float, 
     gamma_b: float,
     S: NDArray[np.float64], 
@@ -30,11 +30,11 @@ def simulate(
 
     Parameters:
     -----------
-    x0: float
+    h0: float
         Initial value for the liquid level in tanks
-    x_max: float
+    h_max: float
         Max level in tanks
-    x_min: float
+    h_min: float
         Min level in tanks
     gamma_a: float
         Valve A constant
@@ -65,7 +65,7 @@ def simulate(
 
     Returns
     -----------
-    x: NDArray[np.float64]
+    h: NDArray[np.float64]
         Liquid level in tanks
     y: NDArray[np.float64]
         Measured tank level
@@ -97,18 +97,19 @@ def simulate(
         [[1, 0, 0, 0],
         [0, 1, 0, 0]])
     
-    x = np.empty((4, n_sampl))
-    for i in range(len(x0)):
-        x[i, 0:max(tau_u, tau_y, 1)] = x0[i]
+    h = np.empty((4, n_sampl))
+    for i in range(len(h0)):
+        h[i, 0:max(tau_u, tau_y, 1)] = h0[i]
     y = np.empty((4, n_sampl))
-    z = F @ x
+    z = F @ h
 
     for t in range(max(tau_u, tau_y, 1), n_sampl):
-        x[:, [t]] = x[:, [t-1]] + T_s * (A @ (p * np.sqrt(x[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
-        x[:, t] = np.clip(x[:, t], 0, None) # przycinanie gdyby po dodaniu szumu otrzymano ujemną wartość
+        h[:, [t]] = h[:, [t-1]] + T_s * (A @ (p * np.sqrt(h[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
+        h[:, t] = np.clip(h[:, t], 0, None) # przycinanie gdyby po dodaniu szumu otrzymano ujemną wartość
         if clip:
-            x[:, t] = np.clip(x[:, t], x_min, x_max)
-        y[:, [t]] = C @ x[:, [t-tau_y]] + np.random.randn(4,1)*e_sigma*active_noise
-        z[:, [t]] = F @ x[:, [t]]
+            for i in range(np.shape(h)[0]):
+                h[i, t] = np.clip(h[i, t], h_min[i], h_max[i])
+        y[:, [t]] = C @ h[:, [t-tau_y]] + np.random.randn(4,1)*e_sigma*active_noise
+        z[:, [t]] = F @ h[:, [t]]
         
-    return x, y, z
+    return h, y, z
