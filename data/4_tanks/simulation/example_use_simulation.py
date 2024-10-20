@@ -33,6 +33,7 @@ e_sigma = 0.005
 qa = 1630000/3600
 qb = 2000000/3600
 q = np.vstack((np.ones((1, n_sampl))* qa, np.ones((1, n_sampl))* qb))
+qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
 x_max = 136
 x_min = 20
 gamma_a = 0.3
@@ -41,7 +42,7 @@ S = np.array([60, 60, 60, 60])
 a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
 c = np.array([0.5, 0.5, 0.5, 0.5])
 
-x, y, z = simulate(x0, x_max, x_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, noise_sigma, e_sigma)
+x, y, z = simulate(x0, x_max, x_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, noise_sigma, e_sigma)
 
 bench_name = '2'
 operating_point = ''
