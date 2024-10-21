@@ -10,7 +10,8 @@ T = max(time)
 n_sampl = T//T_s+1
 tau_u = 0
 tau_y = 0
-h0 = [65, 66, 65, 66]
+# h0 = [65, 66, 65, 66]
+h0 = [65.39748321, 65.00421281, 65.92457687, 65.83827533]
 # h0 = [12.4, 1.8, 12.7, 1.4]
 # h0 = [12.6, 4.8, 13, 4.9]
 active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
@@ -49,6 +50,8 @@ a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
 c = np.array([0.5, 0.5, 0.5, 0.5])
 
 h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, noise_sigma, e_sigma)
+
+print(f"{h[:, [-1]]}")
 
 bench_name = '2'
 operating_point = ''
