@@ -1,8 +1,10 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple
+from scipy.constants import g
 
-g = 981 # cm/s^2
+# g = 981 # cm/s^2
+g = g*100
 
 def simulate(
     h0: NDArray[np.float64], 
@@ -104,6 +106,8 @@ def simulate(
     z = F @ h
 
     for t in range(max(tau_u, tau_y, 1), n_sampl):
+        # x = h[:, [t-1]] - h_min
+        # h[:, [t]] = h[:, [t-1]] + T_s * (A @ (p * np.sqrt(x)) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
         h[:, [t]] = h[:, [t-1]] + T_s * (A @ (p * np.sqrt(h[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
         h[:, t] = np.clip(h[:, t], 0, None) # przycinanie gdyby po dodaniu szumu otrzymano ujemną wartość
         if clip:
