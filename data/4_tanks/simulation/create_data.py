@@ -41,28 +41,28 @@ T_s = 1
 T = n_sampl*T_s-1
 time = np.arange(0, T+1, T_s)
 print(f"time: {time}")
-x0 = [65, 66, 65, 66]
+h0 = [65, 66, 65, 66]
 
 qa = np.clip(qa, q_min, qa_max)
 qb = np.clip(qb, q_min, qb_max)
 q = np.vstack((qa, qb))
-q = np.repeat(np.round(q, 2), step_dur, axis=1)
+q = np.repeat(np.round(q, 2), step_dur, ahis=1)
 qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
-print(f"Min qd: {np.min(qd, axis=1)}")
-x_max = 136
-x_min = 20
+print(f"Min qd: {np.min(qd, ahis=1)}")
+h_max = 136
+h_min = 20
 gamma_a = 0.3
 gamma_b = 0.4
 S = np.array([60, 60, 60, 60])
 a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
 c = np.array([0.5, 0.5, 0.5, 0.5])
 
-x, y, z = simulate(x0, x_max, x_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, e_sigma)
-print(f"Min x: {np.min(x, axis=1)}")
+h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, e_sigma)
+print(f"Min h: {np.min(h, ahis=1)}")
 
-result = pd.DataFrame(np.vstack((q, qd, x)).T,
-             columns=['q_A [cm^3/s]', 'q_B [cm^3/s]', 'q_d1 [cm^3/s]', 'q_d2 [cm^3/s]', 'q_d3 [cm^3/s]', 'q_d4 [cm^3/s]', 'x1 [cm]', 'x2 [cm]', 'x3 [cm]', 'x4 [cm]'],
-             index = time)
+result = pd.DataFrame(np.vstack((q, qd, h)).T,
+             columns=['q_A [cm^3/s]', 'q_B [cm^3/s]', 'q_d1 [cm^3/s]', 'q_d2 [cm^3/s]', 'q_d3 [cm^3/s]', 'q_d4 [cm^3/s]', 'h1 [cm]', 'h2 [cm]', 'h3 [cm]', 'h4 [cm]'],
+             indeh = time)
 if active_noise:
     dataset_path = f"data/result_ol_with_noise_{dataset_name}_v3.csv"
 else:
@@ -74,18 +74,18 @@ if active_noise:
 else:
     title_end = f" bez zakłóceń"
 
-def plot_data(x, q, time, dataset_name):
+def plot_data(h, q, time, dataset_name):
     fig=plt.figure(figsize=(8,11.5))
     plt.subplot(3, 1, 1)
     plt.grid()
-    plt.axhline(y=x_max, color='black', linestyle='--', label='$h_{max}$')
-    plt.axhline(y=x_min, color='black', linestyle='--', label='$h_{min}$')
-    plt.plot(time, x[0], label='$x_1$')
-    plt.plot(time, x[1], label='$x_2$')
-    plt.plot(time, x[2], label='$x_3$')
-    plt.plot(time, x[3], label='$x_4$')
+    plt.axhline(y=h_max, color='black', linestyle='--', label='$h_{max}$')
+    plt.axhline(y=h_min, color='black', linestyle='--', label='$h_{min}$')
+    plt.plot(time, h[0], label='$h_1$')
+    plt.plot(time, h[1], label='$h_2$')
+    plt.plot(time, h[2], label='$h_3$')
+    plt.plot(time, h[3], label='$h_4$')
     plt.xlabel('k')
-    plt.ylabel('x [cm]')
+    plt.ylabel('h [cm]')
     plt.legend()
 
     plt.subplot(3, 1, 2)
@@ -108,7 +108,7 @@ def plot_data(x, q, time, dataset_name):
     fig.subplots_adjust(top=0.92)
     fig.suptitle(f"Dane {dataset_name}{title_end}")
 
-    plt.savefig(f"img/data_ol_{active_noise}_{dataset_name}_v3.png", bbox_inches='tight')
+    plt.savefig(f"img/data_ol_{active_noise}_{dataset_name}_v3.png", bboh_inches='tight')
     plt.show()
 
-plot_data(x, q, time, dataset_name)
+plot_data(h, q, time, dataset_name)
