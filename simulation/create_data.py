@@ -46,9 +46,9 @@ h0 = [65, 66, 65, 66]
 qa = np.clip(qa, q_min, qa_max)
 qb = np.clip(qb, q_min, qb_max)
 q = np.vstack((qa, qb))
-q = np.repeat(np.round(q, 2), step_dur, ahis=1)
+q = np.repeat(np.round(q, 2), step_dur, axis=1)
 qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
-print(f"Min qd: {np.min(qd, ahis=1)}")
+print(f"Min qd: {np.min(qd, axis=1)}")
 h_max = 136
 h_min = 20
 gamma_a = 0.3
@@ -58,11 +58,11 @@ a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
 c = np.array([0.5, 0.5, 0.5, 0.5])
 
 h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, e_sigma)
-print(f"Min h: {np.min(h, ahis=1)}")
+print(f"Min h: {np.min(h, axis=1)}")
 
 result = pd.DataFrame(np.vstack((q, qd, h)).T,
              columns=['q_A [cm^3/s]', 'q_B [cm^3/s]', 'q_d1 [cm^3/s]', 'q_d2 [cm^3/s]', 'q_d3 [cm^3/s]', 'q_d4 [cm^3/s]', 'h1 [cm]', 'h2 [cm]', 'h3 [cm]', 'h4 [cm]'],
-             indeh = time)
+             index = time)
 if active_noise:
     dataset_path = f"../data/four_tanks/result_ol_with_noise_{dataset_name}_v3.csv"
 else:
