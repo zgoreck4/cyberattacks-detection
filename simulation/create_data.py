@@ -64,9 +64,9 @@ result = pd.DataFrame(np.vstack((q, qd, h)).T,
              columns=['q_A [cm^3/s]', 'q_B [cm^3/s]', 'q_d1 [cm^3/s]', 'q_d2 [cm^3/s]', 'q_d3 [cm^3/s]', 'q_d4 [cm^3/s]', 'h1 [cm]', 'h2 [cm]', 'h3 [cm]', 'h4 [cm]'],
              indeh = time)
 if active_noise:
-    dataset_path = f"data/result_ol_with_noise_{dataset_name}_v3.csv"
+    dataset_path = f"../data/four_tanks/result_ol_with_noise_{dataset_name}_v3.csv"
 else:
-    dataset_path = f"data/result_ol_without_noise_{dataset_name}_v3.csv"
+    dataset_path = f"../data/four_tanks/result_ol_without_noise_{dataset_name}_v3.csv"
 result.to_csv(dataset_path, sep=';')
 
 if active_noise:
@@ -108,7 +108,7 @@ def plot_data(h, q, time, dataset_name):
     fig.subplots_adjust(top=0.92)
     fig.suptitle(f"Dane {dataset_name}{title_end}")
 
-    plt.savefig(f"img/data_ol_{active_noise}_{dataset_name}_v3.png", bboh_inches='tight')
+    plt.savefig(f"../data/four_tanks/img/data_ol_{active_noise}_{dataset_name}_v3.png", bboh_inches='tight')
     plt.show()
 
 plot_data(h, q, time, dataset_name)
