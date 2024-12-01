@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Tuple
 from scipy.constants import g
-from .controller import PID_digital, PID_digital_inc
+from .controller import PIDController
 
 g = 981 # cm/s^2
 # g = g*100
@@ -228,13 +228,16 @@ def simulate_close_loop(
     q = np.ones((2, n_sampl)) *[[qa], [qb]]
     e = SP_h - z
 
+    pid_a = PIDController(kp, Ti, Td, Ts, np.shape(SP_h)[1])
+    pid_b = PIDController(kp, Ti, Td, Ts, np.shape(SP_h)[1])
+
     for t in range(max(tau_u, tau_y, 3), n_sampl):
         e[:, [t-1]] = SP_h[:, [t-1]] - z[:, [t-1]]
         # print(e[:, [t-1]])
         # TODO implementacja regulatora dla tau_u
         # TODO implementacja dla szumu, bo może trzeba we wzorze na z użyć y zamiast h
-        qa += PID_digital_inc(kp, Ti, Td, Ts, e[1], t-1)
-        qb += PID_digital_inc(kp, Ti, Td, Ts, e[0], t-1)
+        qa += pid_a.calc_dCV(SP_h[1, :], z[1, :], t-1)
+        qb += pid_b.calc_dCV(SP_h[0, :], z[0, :], t-1)
         # print(f"{qa=:.4f}")
         # print(f"{qb=:.4f}")
         qa = min(qa, qa_max)
