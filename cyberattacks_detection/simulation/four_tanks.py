@@ -229,7 +229,7 @@ def simulate_close_loop(
         q[:, [t-1]] = np.vstack((qa, qb))
         process.update_state(q, t)
         sensor.measure(process.h, t)
-        z[:, [t]] = F @ process.h[:, [t]]
+        z[:, [t]] = F @ sensor.y[:, [t]]
 
     q[:, [n_sampl-1]] = None
     e[:, [n_sampl-1]] = None
