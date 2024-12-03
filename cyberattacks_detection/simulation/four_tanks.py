@@ -3,6 +3,8 @@ from numpy.typing import NDArray
 from typing import Tuple
 from scipy.constants import g
 from .controller import PIDController
+from .process import FourTankProcess
+from .sensor import Sensor
 
 g = 981 # cm/s^2
 # g = g*100
@@ -194,35 +196,15 @@ def simulate_close_loop(
         Perfomance variable to be controlled (output tank level)
     """
     n_sampl = T//Ts+1
-    p = np.reshape(a/S * np.sqrt(2*g), (4, -1))
 
-    A = np.array(
-    [[-1, 0, 1, 0],
-     [0, -1, 0, 1],
-     [0, 0, -1, 0],
-     [0, 0, 0, -1]])
-
-    B = np.array(
-        [[gamma_a/S[0], 0],
-        [0, gamma_b/S[1]],
-        [0, (1-gamma_b)/S[2]],
-        [(1-gamma_a)/S[3], 0]])
-
-    C = np.array(
-        [[c[0], 0, 0, 0],
-        [0, c[1], 0, 0],
-        [0, 0, c[2], 0],
-        [0, 0, 0, c[3]]])
+    process = FourTankProcess(n_sampl, Ts, a, S, gamma_a, gamma_b, h_max, h_min, h0, tau_y, tau_u, clip, qd)
+    sensor  = Sensor(n_sampl, tau_y, c)
 
     F = np.array(
         [[1, 0, 0, 0],
         [0, 1, 0, 0]])
     
-    h = np.empty((4, n_sampl))
-    for i in range(len(h0)):
-        h[i, 0:max(tau_u, tau_y, 3)] = h0[i]
-    y = np.empty((4, n_sampl))
-    z = F @ h
+    z = F @ process.h
     qa = 1630000/3600
     qb = 2000000/3600
     q = np.ones((2, n_sampl)) *[[qa], [qb]]
@@ -245,15 +227,11 @@ def simulate_close_loop(
         qb = min(qb, qb_max)
         qb = max(qb, 0)
         q[:, [t-1]] = np.vstack((qa, qb))
-        h[:, [t]] = h[:, [t-1]] + Ts * (A @ (p * np.sqrt(h[:, [t-1]])) + B @ q[:, [t-1-tau_u]] + qd[:, [t-1]])
-        if qd[:, [t]].any()<0:
-            h[:, t] = np.clip(h[:, t], 0, None) # przycinanie gdyby po dodaniu szumu otrzymano ujemną wartość
-        if clip:
-            h[:, t+1] = np.clip(h[:, t], h_min, h_max)
-        y[:, [t]] = C @ h[:, [t-tau_y]] + np.random.randn(4,1)*e_sigma*active_noise
-        z[:, [t]] = F @ h[:, [t]]
+        process.update_state(q, t)
+        sensor.measure(process.h, t)
+        z[:, [t]] = F @ process.h[:, [t]]
 
     q[:, [n_sampl-1]] = None
     e[:, [n_sampl-1]] = None
 
-    return h, y, z, q, e
+    return process.h, sensor.y, z, q, e
