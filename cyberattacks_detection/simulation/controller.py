@@ -26,4 +26,8 @@ class PIDController:
         # incremental version of digital PID
         # TODO: zastanowić się czy z będzie tylko miało x1, x2 czy wszystkie x
         self.e[k] = SP[k] - z[k]
-        return self.kp * (self.e[k] + self.Ts/self.Ti * self.e[k-1] + self.Td/self.Ts * (self.e[k] - 2*self.e[k-1] + self.e[k-2]))
+        return self.kp * (
+            self.e[k] - self.e[k-1] +
+            self.Ts / self.Ti * self.e[k-1] +
+            self.Td / self.Ts * (self.e[k] - 2 * self.e[k-1] + self.e[k-2])
+        )
