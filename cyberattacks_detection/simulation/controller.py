@@ -9,13 +9,13 @@ class PIDController:
                 Ti: float,
                 Td: float,
                 Ts: float,
-                lenght: int) -> None:
+                n_sampl: int) -> None:
         self.kp = kp
         self.Ti = Ti
         self.Td = Td
         self.Ts = Ts
-        self.lenght = lenght
-        self.e = np.zeros([self.lenght])
+        self.n_sampl = n_sampl
+        self.e = np.zeros([self.n_sampl])
 
     def calc_CV(self, SP: NDArray[np.float64], z: NDArray[np.float64], k: int) -> float:
         # TODO: zastanowić się czy z będzie tylko miało x1, x2 czy wszystkie x
