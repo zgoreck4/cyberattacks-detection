@@ -67,7 +67,7 @@ simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                         )
 
 if close_loop:
-    h, y, z, q, e = simulation.run(SP_h, h0, 1630000/3600, 2000000/3600)
+    h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, qa0=1630000/3600, qb0=2000000/3600)
 else:
     # cm
     qa = 1630000/3600

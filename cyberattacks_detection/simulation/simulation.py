@@ -51,27 +51,40 @@ class Simulation:
     def _set_init_state(self, h0):
         self.process.set_init_state(h0)
         self.z = self.F @ self.process.h
-        self.e = self.SP_h - self.z
+        # self.e = self.SP_h - self.z
 
     
-    def run(self, SP_h, h0, qa, qb):
-        self.SP_h = SP_h
+    def _calc_q(self, t):
+        self.e[:, [t-1]] = self.SP_h[:, [t-1]] - self.z[:, [t-1]]
+        # print(e[:, [t-1]])
+        # TODO implementacja regulatora dla tau_u
+        # TODO implementacja dla szumu, bo może trzeba we wzorze na z użyć y zamiast h
+        self.qa += self.pid_a.calc_dCV(self.SP_h[1, :], self.z[1, :], t-1)
+        self.qb += self.pid_b.calc_dCV(self.SP_h[0, :], self.z[0, :], t-1)
+        # print(f"{qa=:.4f}")
+        # print(f"{qb=:.4f}")
+        self.qa = min(self.qa, self.qa_max)
+        self.qa = max(self.qa, 0)
+        self.qb = min(self.qb, self.qb_max)
+        self.qb = max(self.qb, 0)
+        self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
+
+    
+    def run(self, h0, close_loop=True, **kwargs):
         self._set_init_state(h0)
-        self.q = np.ones((2, self.n_sampl)) *[[qa], [qb]]
+
+        if close_loop:
+            self.SP_h = kwargs['SP_h']
+            self.qa = kwargs['qa0']
+            self.qb = kwargs['qb0']
+            self.e = self.SP_h - self.z
+            self.q = np.ones((2, self.n_sampl)) *[[self.qa], [self.qb]]
+        else:
+            self.q = kwargs['q']
+
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
-            self.e[:, [t-1]] = self.SP_h[:, [t-1]] - self.z[:, [t-1]]
-            # print(e[:, [t-1]])
-            # TODO implementacja regulatora dla tau_u
-            # TODO implementacja dla szumu, bo może trzeba we wzorze na z użyć y zamiast h
-            qa += self.pid_a.calc_dCV(self.SP_h[1, :], self.z[1, :], t-1)
-            qb += self.pid_b.calc_dCV(self.SP_h[0, :], self.z[0, :], t-1)
-            # print(f"{qa=:.4f}")
-            # print(f"{qb=:.4f}")
-            qa = min(qa, self.qa_max)
-            qa = max(qa, 0)
-            qb = min(qb, self.qb_max)
-            qb = max(qb, 0)
-            self.q[:, [t-1]] = np.vstack((qa, qb))
+            if close_loop:
+                self._calc_q(t)
             self.process.update_state(self.q, t)
             self.sensor.measure(self.process.h, t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
