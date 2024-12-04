@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
-from ..simulation import simulate, simulate_close_loop
+from ..simulation import simulate, simulate_close_loop, Simulation
 
-close_loop = False
+close_loop = True
 
 tau_u = 0
 tau_y = 0
@@ -26,6 +26,8 @@ e_sigma = 0.005
 step_dur = 3000/5 # 200
 SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
 SP_h2 = np.array([h0[1], h0[1], 50, 80, 60, 85, 110])
+# SP_h1 = np.array([h0[0], 60])
+# SP_h2 = np.array([h0[1], h0[1]])
 SP_h = np.vstack((SP_h1, SP_h2))
 SP_h = np.repeat(SP_h, step_dur, axis=1)
 print(f"{SP_h}")
@@ -53,14 +55,19 @@ gamma_a = 0.3
 gamma_b = 0.4
 S = np.array([60, 60, 60, 60])
 a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
-c = np.array([0.5, 0.5, 0.5, 0.5])
+c = np.array([1, 1, 1, 1])
 
 kp = 2
 Ti = 15 # 1000000000000000000000
 Td = 0 # 1.5
 
+simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
+                        S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
+                        # , noise_sigma, e_sigma
+                        )
+
 if close_loop:
-    h, y, z, q, e = simulate_close_loop(h0, h_max, h_min, qa_max, qb_max, gamma_a, gamma_b, S, a, c, SP_h, T, T_s, kp, Ti, Td, tau_u, tau_y, active_noise, qd, noise_sigma, e_sigma)
+    h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, qa0=1630000/3600, qb0=2000000/3600)
 else:
     # cm
     qa = 1630000/3600
