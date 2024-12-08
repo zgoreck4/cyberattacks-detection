@@ -5,6 +5,10 @@ from pathlib import Path
 from ..simulation import simulate, simulate_close_loop, Simulation
 
 close_loop = True
+attack_scenario = 3
+num_tank = 0
+attack_value = 0.01
+tau_y_ca = 10
 
 tau_u = 0
 tau_y = 0
@@ -26,7 +30,7 @@ e_sigma = 0.005
 step_dur = 3000/5 # 200
 SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
 SP_h2 = np.array([h0[1], h0[1], 50, 80, 60, 85, 110])
-# SP_h1 = np.array([h0[0], 60])
+# SP_h1 = np.array([h0[0], 80])
 # SP_h2 = np.array([h0[1], h0[1]])
 SP_h = np.vstack((SP_h1, SP_h2))
 SP_h = np.repeat(SP_h, step_dur, axis=1)
@@ -67,7 +71,7 @@ simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                         )
 
 if close_loop:
-    h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, qa0=1630000/3600, qb0=2000000/3600)
+    h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario, num_tank=num_tank, attack_time=n_sampl//2, attack_value=attack_value, tau_y=tau_y_ca)
 else:
     # cm
     qa = 1630000/3600
@@ -100,7 +104,7 @@ plot_path = Path(__file__).parent.parent / "plots"
 if close_loop:
 
     fig2=plt.figure(figsize=(8, 9))
-    plt.subplot(3, 1, 1)
+    plt.subplot(4, 1, 1)
     plt.plot(time, q[0], '.', label='Pompa A')
     plt.plot(time, q[1], '.', label='Pompa B')
     plt.axhline(y=qa_max, color='black', linestyle='--', label='Pompa A max')
@@ -111,7 +115,7 @@ if close_loop:
     plt.legend()
     plt.grid()
 
-    plt.subplot(3, 1, 2)
+    plt.subplot(4, 1, 2)
     plt.plot(time, h[0], label='Zbiornik 1')
     plt.plot(time, h[1], label='Zbiornik 2')
     plt.plot(time, SP_h[0], label='SP zbiornik 1', linestyle='-.')
@@ -124,13 +128,26 @@ if close_loop:
     plt.legend()
     plt.grid()
 
+    plt.subplot(4, 1, 3)
+    plt.plot(time, h[0], label='Zbiornik 1')
+    plt.plot(time, h[1], label='Zbiornik 2')
+    plt.plot(time, y[0], label='Pomiar 1', linestyle='-.')
+    plt.plot(time, y[1], label='Pomiar 2', linestyle='-.')
+    plt.axhline(y=h_max[0], color='black', linestyle='--', label='h_max12')
+    plt.axhline(y=h_min[0], color='black', linestyle='--', label='h_min')
+    plt.xlabel('Czas [s]')
+    plt.ylabel('Poziom wody [cm]')
+    plt.title("Wartość rzeczyiwsta i zmierzona"+title_end)
+    plt.legend()
+    plt.grid()
+
     # plt.subplot(3, 1, 3)
     # plt.plot(time, e[0], label='Zbiornik 1')
     # plt.plot(time, e[1], label='Zbiornik 2')
     # plt.legend()
     # plt.grid()
 
-    plt.subplot(3, 1, 3)
+    plt.subplot(4, 1, 4)
     plt.plot(time, h[0], label='Zbiornik 1')
     plt.plot(time, h[1], label='Zbiornik 2')
     plt.plot(time, h[2], label='Zbiornik 3')

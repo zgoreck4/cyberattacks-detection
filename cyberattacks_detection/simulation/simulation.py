@@ -2,6 +2,7 @@ import numpy as np
 from .controller import PIDController
 from .process import FourTankProcess
 from .sensor import Sensor
+from .cyber_attack import CyberAttack
 from numpy.typing import NDArray
 
 g = 981 # cm/s^2
@@ -27,7 +28,9 @@ class Simulation:
                 qd: NDArray[np.float64]=np.array([0]),
                 # noise_sigma: float=0.1, 
                 # e_sigma: float=0.005,
-                clip=False) -> None:
+                clip=False,
+                attack_scenario=None,
+                ) -> None:
         
         self.qa_max = qa_max
         self.qb_max = qb_max
@@ -48,10 +51,12 @@ class Simulation:
         self.pid_b = PIDController(kp, Ti, Td, self.Ts, self.n_sampl)
 
     
-    def _set_init_state(self, h0):
+    def _set_init_state(self, h0, attack_scenario, num_tank, **kwargs):
         self.process.set_init_state(h0)
         self.z = self.F @ self.process.h
         # self.e = self.SP_h - self.z
+        if attack_scenario is not None:
+            self.cyberattack = CyberAttack(self.process, self.sensor, attack_scenario, num_tank, **kwargs)
 
     
     def _calc_q(self, t):
@@ -70,15 +75,15 @@ class Simulation:
         self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
 
     
-    def run(self, h0, close_loop=True, **kwargs):
-        self._set_init_state(h0)
+    def run(self, h0, close_loop=True, attack_scenario=None, attack_time=None, num_tank=None, **kwargs):
+        self._set_init_state(h0, attack_scenario, num_tank, **kwargs)
 
         if close_loop:
             self.SP_h = kwargs['SP_h']
             self.qa = kwargs['qa0']
             self.qb = kwargs['qb0']
             self.e = self.SP_h - self.z
-            self.q = np.ones((2, self.n_sampl)) *[[self.qa], [self.qb]]
+            self.q = np.ones((2, self.n_sampl)) * [[self.qa], [self.qb]]
         else:
             self.q = kwargs['q']
 
@@ -87,6 +92,8 @@ class Simulation:
                 self._calc_q(t)
             self.process.update_state(self.q, t)
             self.sensor.measure(self.process.h, t)
+            if (attack_scenario is not None) and (t >= attack_time):
+                self.cyberattack.apply_attack(t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
         self.q[:, [self.n_sampl-1]] = None
