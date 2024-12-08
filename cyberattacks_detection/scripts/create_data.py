@@ -56,7 +56,7 @@ gamma_a = 0.3
 gamma_b = 0.4
 S = np.array([60, 60, 60, 60])
 a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
-c = np.array([0.5, 0.5, 0.5, 0.5])
+c = np.array([1, 1, 1, 1])
 
 h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, e_sigma)
 print(f"Min h: {np.min(h, axis=1)}")
