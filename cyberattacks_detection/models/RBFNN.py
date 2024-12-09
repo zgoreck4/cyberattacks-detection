@@ -2,7 +2,7 @@ import os
 os.environ["OMP_NUM_THREADS"] = '12'
 import numpy as np
 from pandas import DataFrame
-from utils import *
+from .utils import *
 from sklearn.cluster import KMeans
 
 class RBFNN:
