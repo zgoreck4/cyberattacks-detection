@@ -1,7 +1,8 @@
-import numpy as np
-from utils import *
 import os
-os.environ["OMP_NUM_THREADS"] = '1'
+os.environ["OMP_NUM_THREADS"] = '12'
+import numpy as np
+from pandas import DataFrame
+from utils import *
 from sklearn.cluster import KMeans
 
 class RBFNN:
@@ -11,6 +12,7 @@ class RBFNN:
         self.centers = None
         self.weights = None
         self.alpha = alpha
+        self.feature_names_in_ = None
 
     def _calc_activations(self, X):
         n_samples = X.shape[0]
@@ -36,6 +38,10 @@ class RBFNN:
         return grad_sum
 
     def fit(self, X, y, iterations=10):
+        if isinstance(X, DataFrame):
+            self.feature_names_in_ = X.columns
+        X = np.array(X)
+        y = np.array(y)
         kmeans = KMeans(n_clusters=self.n_centers)
         kmeans.fit(X)
         self.centers = kmeans.cluster_centers_
@@ -52,5 +58,6 @@ class RBFNN:
             self.sigma = self.sigma - self.alpha*grad
 
     def predict(self, X):
+        X = np.array(X)
         activations = self._calc_activations(X)
         return activations @ self.weights
