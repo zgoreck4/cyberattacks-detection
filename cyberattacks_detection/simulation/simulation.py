@@ -86,6 +86,7 @@ class Simulation:
             self.q = np.ones((2, self.n_sampl)) * [[self.qa], [self.qb]]
         else:
             self.q = kwargs['q']
+            self.e = None
 
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
             if close_loop:
@@ -97,6 +98,7 @@ class Simulation:
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
         self.q[:, [self.n_sampl-1]] = None
-        self.e[:, [self.n_sampl-1]] = None
+        if close_loop:
+            self.e[:, [self.n_sampl-1]] = None
 
         return self.process.h, self.sensor.y, self.z, self.q, self.e

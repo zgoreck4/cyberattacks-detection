@@ -1,10 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
-from ..simulation import simulate, simulate_close_loop, Simulation
+from ..simulation import Simulation
 
-close_loop = True
+close_loop = False
 attack_scenario = 3
 num_tank = 0
 attack_value = 0.01
@@ -25,24 +24,6 @@ h0 = [65.37515073890378, 64.98201463176996, 65.90206440432354, 65.8157923349714]
 active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
 noise_sigma = 0.1
 e_sigma = 0.005
-
-# cm
-step_dur = 3000/5 # 200
-SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
-SP_h2 = np.array([h0[1], h0[1], 50, 80, 60, 85, 110])
-# SP_h1 = np.array([h0[0], 80])
-# SP_h2 = np.array([h0[1], h0[1]])
-SP_h = np.vstack((SP_h1, SP_h2))
-SP_h = np.repeat(SP_h, step_dur, axis=1)
-print(f"{SP_h}")
-
-n_sampl = np.shape(SP_h)[1]
-T_s = 1
-T = n_sampl // T_s # TODO: sprawdzić działanie jeżeli n_sampl nie dzieli się całkowicie przez T_s
-time = np.arange(0, T, T_s)
-T = max(time)
-
-qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
 
 h_max = [[136],
          [136],
@@ -65,19 +46,45 @@ kp = 2
 Ti = 15 # 1000000000000000000000
 Td = 0 # 1.5
 
+# cm
+step_dur = 3000/5 # 200
+
+SP_h = None
+q = None
+
+if close_loop:
+    SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
+    SP_h2 = np.array([h0[1], h0[1], 50, 80, 60, 85, 110])
+    # SP_h1 = np.array([h0[0], 80])
+    # SP_h2 = np.array([h0[1], h0[1]])
+    SP_h = np.vstack((SP_h1, SP_h2))
+    SP_h = np.repeat(SP_h, step_dur, axis=1)
+    print(f"{SP_h}")
+    n_sampl = np.shape(SP_h)[1]
+
+else:
+    n_step = 4
+    qa = np.hstack((np.array(1.63*1000000/3600), np.random.rand(n_step-1)*qa_max*0.8))
+    qb = np.hstack((np.array(2*1000000/3600), np.random.rand(n_step-1)*qb_max*0.8))
+    qa = np.clip(qa, 0, qa_max)
+    qb = np.clip(qb, 0, qb_max)
+    q = np.vstack((qa, qb))
+    q = np.repeat(np.round(q, 2), step_dur, axis=1)
+    n_sampl = np.shape(q)[1]
+
+T_s = 1
+T = n_sampl // T_s # TODO: sprawdzić działanie jeżeli n_sampl nie dzieli się całkowicie przez T_s
+time = np.arange(0, T, T_s)
+T = max(time)
+
+qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
+
 simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                         S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
                         # , noise_sigma, e_sigma
                         )
 
-if close_loop:
-    h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario, num_tank=num_tank, attack_time=n_sampl//2, attack_value=attack_value, tau_y=tau_y_ca)
-else:
-    # cm
-    qa = 1630000/3600
-    qb = 2000000/3600
-    q = np.vstack((np.ones((1, n_sampl))* qa, np.ones((1, n_sampl))* qb))
-    h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, noise_sigma, e_sigma)
+h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, q=q, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario, num_tank=num_tank, attack_time=n_sampl//2, attack_value=attack_value, tau_y=tau_y_ca)
 
 for i in range(4):
     print(F"h{i+1} = {h[i, [-1]][0]}")
@@ -176,7 +183,7 @@ if close_loop:
 
 else:
     fig2=plt.figure(figsize=(6, 7))
-    plt.subplot(2, 1, 1)
+    plt.subplot(3, 1, 1)
     plt.plot(time, h[0], label='Zbiornik 1')
     plt.plot(time, h[1], label='Zbiornik 2')
     plt.plot(time, h[2], label='Zbiornik 3')
@@ -198,12 +205,25 @@ else:
     plt.legend()
     plt.grid()
 
-    plt.subplot(2, 1, 2)
+    plt.subplot(3, 1, 2)
     plt.plot(time, q[0], '.', label='Pompa A')
     plt.plot(time, q[1], '.', label='Pompa B')
     plt.xlabel('Czas [s]')
     plt.ylabel('Przepływ pompy [cm/s]')
     plt.title('Przepływ pomp'+title_end)
+    plt.legend()
+    plt.grid()
+
+    plt.subplot(3, 1, 3)
+    plt.plot(time, h[0], label='Zbiornik 1')
+    plt.plot(time, h[1], label='Zbiornik 2')
+    plt.plot(time, y[0], label='Pomiar 1', linestyle='-.')
+    plt.plot(time, y[1], label='Pomiar 2', linestyle='-.')
+    plt.axhline(y=h_max[0], color='black', linestyle='--', label='h_max12')
+    plt.axhline(y=h_min[0], color='black', linestyle='--', label='h_min')
+    plt.xlabel('Czas [s]')
+    plt.ylabel('Poziom wody [cm]')
+    plt.title("Wartość rzeczyiwsta i zmierzona"+title_end)
     plt.legend()
     plt.grid()
 
