@@ -1,10 +1,13 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from ..simulation import simulate
+from ..simulation import Simulation
 from pathlib import Path
 
-dataset_name = "testowe"
+dataset_name = "uczące"
+
+close_loop = False
+attack_scenario = None
 
 tau_u = 0
 tau_y = 0
@@ -36,12 +39,13 @@ elif dataset_name == 'testowe':
     qa = np.hstack((np.array(1.63*1000000/3600), np.random.rand(n_step_val-1)*qa_max*0.8+q_min))
     qb = np.hstack((np.array(2*1000000/3600), np.random.rand(n_step_val-1)*qb_max*0.8+q_min))
 
+SP_h = None
+
 step_dur = 200
 n_sampl = (n_step_val)*step_dur
 T_s = 1
 T = n_sampl*T_s-1
 time = np.arange(0, T+1, T_s)
-print(f"time: {time}")
 h0 = [65, 66, 65, 66]
 
 qa = np.clip(qa, q_min, qa_max)
@@ -58,16 +62,26 @@ S = np.array([60, 60, 60, 60])
 a = np.array([1.31, 1.51, 0.927, 0.882]) # przekrój otworu wylotowego
 c = np.array([1, 1, 1, 1])
 
-h, y, z = simulate(h0, h_max, h_min, gamma_a, gamma_b, S, a, c, q, T, T_s, tau_u, tau_y, active_noise, qd, e_sigma)
+kp = 2
+Ti = 15 # 1000000000000000000000
+Td = 0 # 1.5
+
+simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
+                        S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
+                        # , noise_sigma, e_sigma
+                        )
+
+h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, q=q, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario)
+
 print(f"Min h: {np.min(h, axis=1)}")
 
 result = pd.DataFrame(np.vstack((q, qd, h)).T,
              columns=['q_A [cm^3/s]', 'q_B [cm^3/s]', 'q_d1 [cm^3/s]', 'q_d2 [cm^3/s]', 'q_d3 [cm^3/s]', 'q_d4 [cm^3/s]', 'h1 [cm]', 'h2 [cm]', 'h3 [cm]', 'h4 [cm]'],
              index = time)
 if active_noise:
-    dataset_path = Path(__file__).parent.parent / f"data/four_tanks/result_ol_with_noise_{dataset_name}_v4.csv"
+    dataset_path = Path(__file__).parent.parent / f"data/four_tanks/result_ol_with_noise_{dataset_name}_v5.csv"
 else:
-    dataset_path = Path(__file__).parent.parent / f"data/four_tanks/result_ol_without_noise_{dataset_name}_v4.csv"
+    dataset_path = Path(__file__).parent.parent / f"data/four_tanks/result_ol_without_noise_{dataset_name}_v5.csv"
 result.to_csv(dataset_path, sep=';')
 
 if active_noise:
@@ -111,8 +125,8 @@ def plot_data(h, q, time, dataset_name):
     fig.subplots_adjust(top=0.92)
     fig.suptitle(f"Dane {dataset_name}{title_end}")
 
-    print(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v3.png")
-    plt.savefig(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v3.png", bbox_inches='tight')
+    print(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.png")
+    plt.savefig(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.png", bbox_inches='tight')
     plt.show()
 
 plot_data(h, q, time, dataset_name)
