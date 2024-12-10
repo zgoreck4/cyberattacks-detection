@@ -61,3 +61,16 @@ class RBFNN:
         X = np.array(X)
         activations = self._calc_activations(X)
         return activations @ self.weights
+
+    def save_model(self, path):
+        """Optional: Save the model if needed."""
+        np.savez(path, weights=self.weights, sigma=self.sigma, centers=self.centers, feature_names_in_=self.feature_names_in_)
+
+    def load_model(self, path):
+        """Optional: Load the model if needed."""
+        model_data = np.load(path)
+        self.weights = model_data['weights']
+        self.sigma = model_data['sigma']
+        self.n_centers = np.shape(self.sigma)[0]
+        self.centers = model_data['centers']
+        self.feature_names_in_ = model_data['feature_names_in_']
