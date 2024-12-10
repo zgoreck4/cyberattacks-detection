@@ -26,11 +26,13 @@ class ELM:
 
     def save_model(self, path):
         """Optional: Save the model if needed."""
-        np.savez(path, weights=self.weights, b=self.b, beta=self.beta)
+        np.savez(path, weights=self.weights, b=self.b, beta=self.beta, feature_names_in_=self.feature_names_in_)
 
     def load_model(self, path):
         """Optional: Load the model if needed."""
         model_data = np.load(path)
         self.weights = model_data['weights']
         self.b = model_data['b']
+        self.num_hidden_neurons = np.shape(self.b)[1]
         self.beta = model_data['beta']
+        self.feature_names_in_ = model_data['feature_names_in_']
