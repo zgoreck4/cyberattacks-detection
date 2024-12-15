@@ -6,12 +6,13 @@ from .BaseModel import BaseModel
 from numpy.typing import NDArray
 from .utils import *
 from sklearn.cluster import KMeans
+from scipy.spatial.distance import pdist
 
 class RBFNN(BaseModel):
     def __init__(self, n_centers, alpha=0.01):
         super().__init__()
         self.n_centers = n_centers
-        self.sigma = np.ones((self.n_centers, 1))
+        self.sigma = None
         self.centers = None
         self.weights = None
         self.alpha = alpha
@@ -66,6 +67,10 @@ class RBFNN(BaseModel):
         kmeans = KMeans(n_clusters=self.n_centers)
         kmeans.fit(X)
         self.centers = kmeans.cluster_centers_
+
+        center_distances = pdist(self.centers, metric='euclidean')
+        sigma_init = np.mean(center_distances) / np.sqrt(2 * self.n_centers)
+        self.sigma = np.full((self.n_centers, 1), sigma_init)
 
         best_metric_value = np.inf
         for it in range(iterations):
