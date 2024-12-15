@@ -73,6 +73,8 @@ class RBFNN(BaseModel):
         self.sigma = np.full((self.n_centers, 1), sigma_init)
 
         best_metric_value = np.inf
+        best_weights = None
+        best_sigma = None
         for it in range(iterations):
             activations = self._calc_activations(X)
             # least squares method
@@ -104,6 +106,7 @@ class RBFNN(BaseModel):
         if best_weights is not None and best_sigma is not None:
             self.weights = best_weights
             self.sigma = best_sigma
+            it = it - patience
 
         return it + 1
 
@@ -128,7 +131,7 @@ class RBFNN(BaseModel):
 
     def load_model(self, path):
         """Optional: Load the model if needed."""
-        model_data = np.load(path)
+        model_data = np.load(path, allow_pickle=True)
         self.weights = model_data['weights']
         self.sigma = model_data['sigma']
         self.n_centers = np.shape(self.sigma)[0]

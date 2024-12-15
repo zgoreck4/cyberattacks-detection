@@ -56,7 +56,7 @@ class ELM(BaseModel):
 
     def load_model(self, path):
         """Optional: Load the model if needed."""
-        model_data = np.load(path)
+        model_data = np.load(path, allow_pickle=True)
         self.weights = model_data['weights']
         self.b = model_data['b']
         self.num_hidden_neurons = np.shape(self.b)[1]
