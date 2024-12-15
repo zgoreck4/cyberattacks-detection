@@ -1,5 +1,5 @@
-from RBFNN import RBFNN
-from ELM import ELM
+from .RBFNN import RBFNN
+from .ELM import ELM
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -81,13 +81,13 @@ def main():
         n_centers = 4
 
         rbf_net = RBFNN(n_centers, alpha=0.001)
-        rbf_net.fit(X_train, y_train)
+        rbf_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = rbf_net.predict(X_train)
         y_test_pred = rbf_net.predict(X_test)
     
     elif nn == 'ELM':
         elm_net = ELM(X_train.shape[1], 7)
-        elm_net.fit(X_train, y_train)
+        elm_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = elm_net.predict(X_train)
         y_test_pred = elm_net.predict(X_test)
     
@@ -115,13 +115,13 @@ def main():
         n_centers = 10
 
         rbf_net = RBFNN(n_centers, alpha=0.001)
-        rbf_net.fit(X_train, y_train)
+        rbf_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = rbf_net.predict(X_train)
         y_test_pred = rbf_net.predict(X_test)
 
     elif nn == 'ELM':
         elm_net = ELM(X_train.shape[1], 10)
-        elm_net.fit(X_train, y_train)
+        elm_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = elm_net.predict(X_train)
         y_test_pred = elm_net.predict(X_test)
 
