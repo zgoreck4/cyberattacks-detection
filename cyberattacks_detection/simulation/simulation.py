@@ -75,7 +75,75 @@ class Simulation:
         self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
 
     
-    def run(self, h0, close_loop=True, attack_scenario=None, attack_time=None, num_tank=None, **kwargs):
+    def _prepare_model_inputs(self, k, model):
+        """
+        Prepare inputs for the predictive model based on model_features and history.
+        Returns:
+            Array of inputs for the model.
+        """
+        inputs = []
+        for feature in model.feature_names_in_:
+            if feature == "q_A(k-1)":
+                inputs.append(self.q[0, k-1])
+            elif feature == "q_B(k-1)":
+                inputs.append(self.q[1, k-1])
+            elif feature == "x2(k-1)":
+                inputs.append(self.sensor.y[1, k-1])
+            elif feature == "x3(k-1)":
+                inputs.append(self.sensor.y[2, k-1])
+            elif feature == "x4(k-1)":
+                inputs.append(self.sensor.y[3, k-1])
+            elif feature == "x1(k-1)":
+                inputs.append(self.sensor.y[0, k-1])
+            elif feature == "q_A(k-2)":
+                inputs.append(self.q[0, k-2])
+            elif feature == "q_B(k-2)":
+                inputs.append(self.q[1, k-2])
+            elif feature == "x1(k-2)":
+                inputs.append(self.sensor.y[0, k-2])
+            elif feature == "x2(k-2)":
+                inputs.append(self.sensor.y[1, k-2])
+            elif feature == "x3(k-2)":
+                inputs.append(self.sensor.y[2, k-2])
+            elif feature == "x4(k-2)":
+                inputs.append(self.sensor.y[3, k-2])
+            elif feature == "q_A(k-3)":
+                inputs.append(self.q[0, k-3])
+            elif feature == "q_B(k-3)":
+                inputs.append(self.q[1, k-3])
+            elif feature == "x1(k-3)":
+                inputs.append(self.sensor.y[0, k-3])
+            elif feature == "x2(k-3)":
+                inputs.append(self.sensor.y[1, k-3])
+            elif feature == "x3(k-3)":
+                inputs.append(self.sensor.y[2, k-3])
+            elif feature == "x4(k-3)":
+                inputs.append(self.sensor.y[3, k-3])
+            elif feature == "q_A(k-4)":
+                inputs.append(self.q[0, k-4])
+            elif feature == "q_B(k-4)":
+                inputs.append(self.q[1, k-4])
+            elif feature == "x1(k-4)":
+                inputs.append(self.sensor.y[0, k-4])
+            elif feature == "x2(k-4)":
+                inputs.append(self.sensor.y[1, k-4])
+            elif feature == "x3(k-4)":
+                inputs.append(self.sensor.y[2, k-4])
+            elif feature == "x4(k-4)":
+                inputs.append(self.sensor.y[3, k-4])
+            else:
+                raise ValueError(f"Unknown feature: {feature}")
+        return np.array([inputs])
+
+    
+    def run(self,
+            h0,
+            close_loop=True,
+            model_list=None,
+            attack_scenario=None,
+            attack_time=None,
+            num_tank=None,
+            **kwargs):
         self._set_init_state(h0, attack_scenario, num_tank, **kwargs)
 
         if close_loop:
@@ -88,6 +156,9 @@ class Simulation:
             self.q = kwargs['q']
             self.e = None
 
+        h_model = np.empty((len(model_list), np.shape(self.sensor.y)[1]))
+        print(np.shape(h_model))
+
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
             if close_loop:
                 self._calc_q(t)
@@ -97,8 +168,16 @@ class Simulation:
                 self.cyberattack.apply_attack(t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
+            h_model_t = []
+            if model_list is not None:
+                for model in model_list:
+                    inputs = self._prepare_model_inputs(t, model)
+                    h_model_t.append(model.predict(inputs)[0])
+            h_model[:, [t]] = np.array(h_model_t)
+
+
         self.q[:, [self.n_sampl-1]] = None
         if close_loop:
             self.e[:, [self.n_sampl-1]] = None
 
-        return self.process.h, self.sensor.y, self.z, self.q, self.e
+        return self.process.h, self.sensor.y, self.z, self.q, self.e, h_model
