@@ -1,18 +1,21 @@
 import os
-os.environ["OMP_NUM_THREADS"] = '12'
+os.environ["OMP_NUM_THREADS"] = '1'
 import numpy as np
 from pandas import DataFrame
+from .BaseModel import BaseModel
+from numpy.typing import NDArray
 from .utils import *
 from sklearn.cluster import KMeans
+from scipy.spatial.distance import pdist
 
-class RBFNN:
+class RBFNN(BaseModel):
     def __init__(self, n_centers, alpha=0.01):
+        super().__init__()
         self.n_centers = n_centers
-        self.sigma = np.ones((self.n_centers, 1))
+        self.sigma = None
         self.centers = None
         self.weights = None
         self.alpha = alpha
-        self.feature_names_in_ = None
 
     def _calc_activations(self, X):
         n_samples = X.shape[0]
@@ -37,27 +40,104 @@ class RBFNN:
 
         return grad_sum
 
-    def fit(self, X, y, iterations=10):
+    def fit(self,
+            X: NDArray | DataFrame,
+            y: NDArray | DataFrame,
+            input_min_arr: NDArray,
+            input_max_arr: NDArray,
+            output_min_arr: NDArray,
+            output_max_arr: NDArray,
+            iterations: int=10,
+            X_val: NDArray | DataFrame = None,
+            y_val: NDArray | DataFrame = None,
+            patience: int = 5,
+            metric: callable = None, # only metric that a lower value is best            
+            **kwargs) -> int:
         if isinstance(X, DataFrame):
             self.feature_names_in_ = X.columns
         X = np.array(X)
         y = np.array(y)
+        self.input_min_arr = input_min_arr
+        self.input_max_arr = input_max_arr
+        self.output_min_arr = output_min_arr
+        self.output_max_arr = output_max_arr
+        X = self._min_max_scale(X, self.input_min_arr, self.input_max_arr)
+        y = self._min_max_scale(y, self.output_min_arr, self.output_max_arr)
+        
         kmeans = KMeans(n_clusters=self.n_centers)
         kmeans.fit(X)
         self.centers = kmeans.cluster_centers_
 
+        center_distances = pdist(self.centers, metric='euclidean')
+        sigma_init = np.mean(center_distances) / np.sqrt(2 * self.n_centers)
+        self.sigma = np.full((self.n_centers, 1), sigma_init)
+
+        best_metric_value = np.inf
+        best_weights = None
+        best_sigma = None
         for it in range(iterations):
-
             activations = self._calc_activations(X)
-
             # least squares method
             # weights = pseudo-inverse of activations @ y
             self.weights = np.linalg.pinv(activations) @ y
-
             grad = self._GD(X, y)
             self.sigma = self.sigma - self.alpha*grad
 
+            # Evaluate on validation data if provided
+            if X_val is not None and y_val is not None and metric is not None:
+                y_val_pred = self.predict(X_val)
+                current_metric_value = metric(y_val, y_val_pred)
+
+                # Check if there's an improvement
+                if current_metric_value < best_metric_value:
+                    best_metric_value = current_metric_value
+                    best_weights = self.weights.copy()
+                    best_sigma = self.sigma.copy()
+                    no_improvement_count = 0
+                else:
+                    no_improvement_count += 1
+
+                # Early stopping check
+                if no_improvement_count >= patience:
+                    print(f"Early stopping at epoch {it+1}. Best metric: {best_metric_value}")
+                    break
+
+        # Restore best weights and sigmas if early stopping occurred
+        if best_weights is not None and best_sigma is not None:
+            self.weights = best_weights
+            self.sigma = best_sigma
+            it = it - patience
+
+        return it + 1
+
     def predict(self, X):
         X = np.array(X)
+        X = self._min_max_scale(X, self.input_min_arr, self.input_max_arr)
         activations = self._calc_activations(X)
-        return activations @ self.weights
+        y = activations @ self.weights
+        return self._inverse_min_max_scale(y, self.output_min_arr, self.output_max_arr)
+
+    def save_model(self, path):
+        """Optional: Save the model if needed."""
+        np.savez(path,
+                 weights=self.weights,
+                 sigma=self.sigma,
+                 centers=self.centers,
+                 feature_names_in_=self.feature_names_in_,
+                 input_max_arr=self.input_max_arr, 
+                 input_min_arr=self.input_min_arr,
+                 output_max_arr=self.output_max_arr,
+                 output_min_arr=self.output_min_arr)
+
+    def load_model(self, path):
+        """Optional: Load the model if needed."""
+        model_data = np.load(path, allow_pickle=True)
+        self.weights = model_data['weights']
+        self.sigma = model_data['sigma']
+        self.n_centers = np.shape(self.sigma)[0]
+        self.centers = model_data['centers']
+        self.feature_names_in_ = model_data['feature_names_in_']
+        self.input_max_arr = model_data['input_max_arr']
+        self.input_min_arr = model_data['input_min_arr']
+        self.output_max_arr = model_data['output_max_arr']
+        self.output_min_arr = model_data['output_min_arr']

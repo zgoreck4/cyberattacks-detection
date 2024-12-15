@@ -1,5 +1,5 @@
-from RBFNN import RBFNN
-from ELM import ELM
+from .RBFNN import RBFNN
+from .ELM import ELM
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
@@ -81,13 +81,13 @@ def main():
         n_centers = 4
 
         rbf_net = RBFNN(n_centers, alpha=0.001)
-        rbf_net.fit(X_train, y_train)
+        rbf_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = rbf_net.predict(X_train)
         y_test_pred = rbf_net.predict(X_test)
     
     elif nn == 'ELM':
         elm_net = ELM(X_train.shape[1], 7)
-        elm_net.fit(X_train, y_train)
+        elm_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = elm_net.predict(X_train)
         y_test_pred = elm_net.predict(X_test)
     
@@ -115,13 +115,13 @@ def main():
         n_centers = 10
 
         rbf_net = RBFNN(n_centers, alpha=0.001)
-        rbf_net.fit(X_train, y_train)
+        rbf_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = rbf_net.predict(X_train)
         y_test_pred = rbf_net.predict(X_test)
 
     elif nn == 'ELM':
         elm_net = ELM(X_train.shape[1], 10)
-        elm_net.fit(X_train, y_train)
+        elm_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
         y_train_pred = elm_net.predict(X_train)
         y_test_pred = elm_net.predict(X_test)
 
@@ -130,6 +130,35 @@ def main():
 
     plot_y_real_pred(y_train, y_train_pred, "Wyniki dla zbioru uczącego", nn)   
     plot_y_real_pred(y_test, y_test_pred, "Wyniki dla zbioru testowego", nn)    
+
+    # Example usage 3 input - 1 output
+    x = np.linspace(-5, 5, num=200).reshape((-1, 1))
+    y = 2.0 + 12 * x + np.random.normal(scale=3.0, size=x.shape)
+    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    # Visualize dataset
+    plot_data(X_train, y_train, "Zbiór uczący")
+    plot_data(X_test, y_test, "Zbiór testowy")
+
+    if nn == 'RBF':
+
+        n_centers = 4
+
+        rbf_net = RBFNN(n_centers, alpha=0.001)
+        rbf_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
+        y_train_pred = rbf_net.predict(X_train)
+        y_test_pred = rbf_net.predict(X_test)
+    
+    elif nn == 'ELM':
+        elm_net = ELM(X_train.shape[1], 7)
+        elm_net.fit(X_train, y_train, np.min(X_train, axis=0), np.max(X_train, axis=0), np.min(y_train, axis=0), np.max(y_train, axis=0))
+        y_train_pred = elm_net.predict(X_train)
+        y_test_pred = elm_net.predict(X_test)
+    
+    print("dla pierwszego zbioru uczącego MSE: %2.3f" % (MSE(y_train, y_train_pred)))
+    print("dla pierwszego zbioru testowego MSE: %2.3f" % (MSE(y_test, y_test_pred)))
+
+    plot_real_pred(X_train, y_train, y_train_pred, "Wyniki dla zbioru uczącego", nn)
+    plot_real_pred(X_test, y_test, y_test_pred, "Wyniki dla zbioru testowego", nn)
 
 
 if __name__ == '__main__':
