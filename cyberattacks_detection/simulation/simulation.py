@@ -75,7 +75,7 @@ class Simulation:
         self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
 
     
-    def _prepare_model_inputs(self, k, model):
+    def _prepare_model_inputs(self, k, model, recursion_mode=False):
         """
         Prepare inputs for the predictive model based on model_features and history.
         Returns:
@@ -88,49 +88,97 @@ class Simulation:
             elif feature == "q_B(k-1)":
                 inputs.append(self.q[1, k-1])
             elif feature == "x2(k-1)":
-                inputs.append(self.sensor.y[1, k-1])
+                if recursion_mode:
+                    inputs.append(self.h_model[1, k-1])
+                else:
+                    inputs.append(self.sensor.y[1, k-1])
             elif feature == "x3(k-1)":
-                inputs.append(self.sensor.y[2, k-1])
+                if recursion_mode:
+                    inputs.append(self.h_model[2, k-1])
+                else:
+                    inputs.append(self.sensor.y[2, k-1])
             elif feature == "x4(k-1)":
-                inputs.append(self.sensor.y[3, k-1])
+                if recursion_mode:
+                    inputs.append(self.h_model[3, k-1])
+                else:
+                    inputs.append(self.sensor.y[3, k-1])
             elif feature == "x1(k-1)":
-                inputs.append(self.sensor.y[0, k-1])
+                if recursion_mode:
+                    inputs.append(self.h_model[0, k-1])
+                else:
+                    inputs.append(self.sensor.y[0, k-1])
             elif feature == "q_A(k-2)":
                 inputs.append(self.q[0, k-2])
             elif feature == "q_B(k-2)":
                 inputs.append(self.q[1, k-2])
             elif feature == "x1(k-2)":
-                inputs.append(self.sensor.y[0, k-2])
+                if recursion_mode:
+                    inputs.append(self.h_model[0, k-2])
+                else:
+                    inputs.append(self.sensor.y[0, k-2])
             elif feature == "x2(k-2)":
-                inputs.append(self.sensor.y[1, k-2])
+                if recursion_mode:
+                    inputs.append(self.h_model[1, k-2])
+                else:
+                    inputs.append(self.sensor.y[1, k-2])
             elif feature == "x3(k-2)":
-                inputs.append(self.sensor.y[2, k-2])
+                if recursion_mode:
+                    inputs.append(self.h_model[2, k-2])
+                else:                    
+                    inputs.append(self.sensor.y[2, k-2])
             elif feature == "x4(k-2)":
-                inputs.append(self.sensor.y[3, k-2])
+                if recursion_mode:
+                    inputs.append(self.h_model[3, k-2])
+                else:
+                    inputs.append(self.sensor.y[3, k-2])
             elif feature == "q_A(k-3)":
                 inputs.append(self.q[0, k-3])
             elif feature == "q_B(k-3)":
                 inputs.append(self.q[1, k-3])
             elif feature == "x1(k-3)":
-                inputs.append(self.sensor.y[0, k-3])
+                if recursion_mode:
+                    inputs.append(self.h_model[0, k-3])
+                else:
+                    inputs.append(self.sensor.y[0, k-3])
             elif feature == "x2(k-3)":
-                inputs.append(self.sensor.y[1, k-3])
+                if recursion_mode:
+                    inputs.append(self.h_model[1, k-3])
+                else:
+                    inputs.append(self.sensor.y[1, k-3])
             elif feature == "x3(k-3)":
-                inputs.append(self.sensor.y[2, k-3])
+                if recursion_mode:
+                    inputs.append(self.h_model[2, k-3])
+                else:
+                    inputs.append(self.sensor.y[2, k-3])
             elif feature == "x4(k-3)":
-                inputs.append(self.sensor.y[3, k-3])
+                if recursion_mode:
+                    inputs.append(self.h_model[3, k-3])
+                else:
+                    inputs.append(self.sensor.y[3, k-3])
             elif feature == "q_A(k-4)":
                 inputs.append(self.q[0, k-4])
             elif feature == "q_B(k-4)":
                 inputs.append(self.q[1, k-4])
             elif feature == "x1(k-4)":
-                inputs.append(self.sensor.y[0, k-4])
+                if recursion_mode:
+                    inputs.append(self.h_model[0, k-4])
+                else:
+                    inputs.append(self.sensor.y[0, k-4])
             elif feature == "x2(k-4)":
-                inputs.append(self.sensor.y[1, k-4])
+                if recursion_mode:
+                    inputs.append(self.h_model[1, k-4])
+                else:
+                    inputs.append(self.sensor.y[1, k-4])
             elif feature == "x3(k-4)":
-                inputs.append(self.sensor.y[2, k-4])
+                if recursion_mode:
+                    inputs.append(self.h_model[2, k-4])
+                else:
+                    inputs.append(self.sensor.y[2, k-4])
             elif feature == "x4(k-4)":
-                inputs.append(self.sensor.y[3, k-4])
+                if recursion_mode:
+                    inputs.append(self.h_model[3, k-4])
+                else:
+                    inputs.append(self.sensor.y[3, k-4])
             else:
                 raise ValueError(f"Unknown feature: {feature}")
         return np.array([inputs])
@@ -140,6 +188,7 @@ class Simulation:
             h0,
             close_loop=True,
             model_list=None,
+            recursion_mode=False,
             attack_scenario=None,
             attack_time=None,
             num_tank=None,
@@ -156,8 +205,7 @@ class Simulation:
             self.q = kwargs['q']
             self.e = None
 
-        h_model = np.empty((len(model_list), np.shape(self.sensor.y)[1]))
-        print(np.shape(h_model))
+        self.h_model = self.process.h.copy()
 
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
             if close_loop:
@@ -171,13 +219,13 @@ class Simulation:
             h_model_t = []
             if model_list is not None:
                 for model in model_list:
-                    inputs = self._prepare_model_inputs(t, model)
+                    inputs = self._prepare_model_inputs(t, model, recursion_mode)
                     h_model_t.append(model.predict(inputs)[0])
-            h_model[:, [t]] = np.array(h_model_t)
+            self.h_model[:, [t]] = np.array(h_model_t)
 
 
         self.q[:, [self.n_sampl-1]] = None
         if close_loop:
             self.e[:, [self.n_sampl-1]] = None
 
-        return self.process.h, self.sensor.y, self.z, self.q, self.e, h_model
+        return self.process.h, self.sensor.y, self.z, self.q, self.e, self.h_model

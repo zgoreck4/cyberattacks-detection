@@ -13,7 +13,7 @@ num_tank = 0
 attack_value = 0.05
 tau_y_ca = 10
 model_type = 'elm' # None
-recursion_mode = False
+recursion_mode = True
 
 tau_u = 0
 tau_y = 0
@@ -64,19 +64,19 @@ model_path = Path(__file__).parent.parent / "saved_models"
 if model_type == 'lr':
     model1 = pickle.load(open(f"{model_path}/lr_x1.sav", 'rb'))
     model2 = pickle.load(open(f"{model_path}/lr_x2.sav", 'rb'))
-    # model3 = pickle.load(open(f"{model_path}/lr_x3.sav", 'rb'))
-    # model4 = pickle.load(open(f"{model_path}/lr_x4.sav", 'rb'))
-    model_list = [model1, model2]
+    model3 = pickle.load(open(f"{model_path}/lr_x3.sav", 'rb'))
+    model4 = pickle.load(open(f"{model_path}/lr_x4.sav", 'rb'))
+    model_list = [model1, model2, model3, model4]
 elif model_type == 'elm':
     model1 = ELM(0, 0)
     model1.load_model(f"{model_path}/elm_x1.npz")
     model2 = ELM(0, 0)
     model2.load_model(f"{model_path}/elm_x2.npz")
-    # model3 = ELM(None, None)
-    # model3.load_model(f"{model_path}/elm_x3.npz")
-    # model4 = ELM(None, None)
-    # model4.load_model(f"{model_path}/elm_x4.npz")
-    model_list = [model1, model2]
+    model3 = ELM(0, 0)
+    model3.load_model(f"{model_path}/elm_x3.npz")
+    model4 = ELM(0, 0)
+    model4.load_model(f"{model_path}/elm_x4.npz")
+    model_list = [model1, model2, model3, model4]
 
 if close_loop:
     SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
@@ -103,7 +103,6 @@ T = n_sampl // T_s # TODO: sprawdzić działanie jeżeli n_sampl nie dzieli się
 time = np.arange(0, T, T_s)
 T = max(time)
 
-
 attack_time = n_sampl//2
 
 qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
@@ -116,6 +115,7 @@ simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
 h, y, z, q, e, h_model = simulation.run(h0,
                                close_loop,
                                model_list=model_list,
+                               recursion_mode=recursion_mode,
                                SP_h=SP_h,
                                q=q,
                                qa0=1630000/3600,
