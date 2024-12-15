@@ -41,13 +41,17 @@ class RBFNN(BaseModel):
 
     def fit(self,
             X: NDArray | DataFrame,
-            y: NDArray,
+            y: NDArray | DataFrame,
             input_min_arr: NDArray,
             input_max_arr: NDArray,
             output_min_arr: NDArray,
             output_max_arr: NDArray,
             iterations: int=10,
-            **kwargs):
+            X_val: NDArray | DataFrame = None,
+            y_val: NDArray | DataFrame = None,
+            patience: int = 5,
+            metric: callable = None, # only metric that a lower value is best            
+            **kwargs) -> int:
         if isinstance(X, DataFrame):
             self.feature_names_in_ = X.columns
         X = np.array(X)
@@ -63,16 +67,40 @@ class RBFNN(BaseModel):
         kmeans.fit(X)
         self.centers = kmeans.cluster_centers_
 
+        best_metric_value = np.inf
         for it in range(iterations):
-
             activations = self._calc_activations(X)
-
             # least squares method
             # weights = pseudo-inverse of activations @ y
             self.weights = np.linalg.pinv(activations) @ y
-
             grad = self._GD(X, y)
             self.sigma = self.sigma - self.alpha*grad
+
+            # Evaluate on validation data if provided
+            if X_val is not None and y_val is not None and metric is not None:
+                y_val_pred = self.predict(X_val)
+                current_metric_value = metric(y_val, y_val_pred)
+
+                # Check if there's an improvement
+                if current_metric_value < best_metric_value:
+                    best_metric_value = current_metric_value
+                    best_weights = self.weights.copy()
+                    best_sigma = self.sigma.copy()
+                    no_improvement_count = 0
+                else:
+                    no_improvement_count += 1
+
+                # Early stopping check
+                if no_improvement_count >= patience:
+                    print(f"Early stopping at epoch {it+1}. Best metric: {best_metric_value}")
+                    break
+
+        # Restore best weights and sigmas if early stopping occurred
+        if best_weights is not None and best_sigma is not None:
+            self.weights = best_weights
+            self.sigma = best_sigma
+
+        return it + 1
 
     def predict(self, X):
         X = np.array(X)
