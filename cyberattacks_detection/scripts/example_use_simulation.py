@@ -8,12 +8,12 @@ from matplotlib.ticker import MaxNLocator
 
 save_mode = False
 close_loop = True
-attack_scenario = None # 3
+attack_scenario = 0 # 3
 num_tank = 0
 attack_value = 0.05
 tau_y_ca = 10
 model_type = 'elm' # None
-recursion_mode = True
+recursion_mode = False
 
 tau_u = 0
 tau_y = 0
@@ -164,13 +164,14 @@ if close_loop:
     ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.1, 1.0))
     ax1.grid()
 
-    # Add secondary y-axis to the first subplot
-    ax1_secondary = ax1.twinx()
-    ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
-    ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
-    # set y-axis to only show integer values
-    ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
+    if attack_scenario is not None:
+        # Add secondary y-axis to the first subplot
+        ax1_secondary = ax1.twinx()
+        ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+        ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
+        # set y-axis to only show integer values
+        ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
 
 
     ax2 = plt.subplot(2, 1, 2)
@@ -187,13 +188,14 @@ if close_loop:
     ax2.legend(loc='best', bbox_to_anchor=(0, 0, 0.1, 1.0))
     ax2.grid()
 
-    # Add secondary y-axis to the first subplot
-    ax2_secondary = ax2.twinx()
-    ax2_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
-    ax2_secondary.set_ylabel('Sygnał binarny cyberataku')
-    # set y-axis to only show integer values
-    ax2_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
-    ax2_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
+    if attack_scenario is not None:
+        # Add secondary y-axis to the first subplot
+        ax2_secondary = ax2.twinx()
+        ax2_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+        ax2_secondary.set_ylabel('Sygnał binarny cyberataku')
+        # set y-axis to only show integer values
+        ax2_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax2_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
 
     # plt.subplot(3, 1, 3)
     # plt.plot(time, e[0], label='Zbiornik 1')
@@ -230,13 +232,14 @@ if close_loop:
         ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.2, 1.0))
         ax1.grid()
 
-        # Add secondary y-axis to the first subplot
-        ax1_secondary = ax1.twinx()
-        ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
-        ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
-        # set y-axis to only show integer values
-        ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
+        if attack_scenario is not None:
+            # Add secondary y-axis to the first subplot
+            ax1_secondary = ax1.twinx()
+            ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+            ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
+            # set y-axis to only show integer values
+            ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+            ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
 
     # plt.subplots_adjust(hspace=0.5)
 
