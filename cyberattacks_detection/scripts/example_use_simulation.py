@@ -4,6 +4,7 @@ from pathlib import Path
 from ..simulation import Simulation
 import pickle
 from ..models import ELM, RBFNN
+from ..detection import CyberattackDetector
 from matplotlib.ticker import MaxNLocator
 
 def main_function() -> None:
@@ -15,7 +16,9 @@ def main_function() -> None:
     attack_value = 0.05
     tau_y_ca = 10
     model_type = 'elm' # None
-    recursion_mode = False
+    recursion_mode = True
+    window_detection = 50
+    threshold_method = 'z-score' # 'percentile'
 
     tau_u = 0
     tau_y = 0
@@ -79,6 +82,60 @@ def main_function() -> None:
         model4 = ELM(0, 0)
         model4.load_model(f"{model_path}/elm_x4.npz")
         model_list = [model1, model2, model3, model4]
+    else:
+        model_list = None
+
+    # należy ustawić próg w detektorze na podstawie normalnej pracy
+    if (attack_scenario is not None) and model_list is not None:
+        SP_h1 = np.array([h0[0], h0[0], 70, 70, 95, 95, 90
+                          #, 90, 40
+                          ])
+        SP_h2 = np.array([h0[1], 50,   50, 90, 90, 105, 105
+                          # , 60, 60
+                          ])
+        SP_h = np.vstack((SP_h1, SP_h2))
+        SP_h = np.repeat(SP_h, step_dur, axis=1)
+
+        n_sampl = np.shape(SP_h)[1]
+        T_s = 1
+        T = n_sampl // T_s # TODO: sprawdzić działanie jeżeli n_sampl nie dzieli się całkowicie przez T_s
+        time = np.arange(0, T, T_s)
+        T = max(time)
+        qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
+        simulation_normal = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
+                                S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
+                                # , noise_sigma, e_sigma
+                                )
+        h, y, z, q, e, h_model, attack_signal = simulation_normal.run(h0,
+                                    close_loop,
+                                    model_list=model_list,
+                                    recursion_mode=recursion_mode,
+                                    SP_h=SP_h,
+                                    q=q,
+                                    qa0=1630000/3600,
+                                    qb0=2000000/3600,
+                                    attack_scenario=None)
+        
+        cyberattack_detector = CyberattackDetector(window=window_detection)
+        cyberattack_detector.calc_threshold(h[:len(h_model), :], h_model, method=threshold_method)
+
+        plt.figure(figsize=(8, 9))
+        plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
+        for i, (h_i, h_model_i) in enumerate(zip(h, h_model)):
+            ax1 = plt.subplot(4, 1, i+1)
+            ax1.plot(time, h_i, label=f'pomiar $h_{i+1}$')
+            # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
+            # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
+            if model_type is not None:
+                ax1.plot(time, h_model_i, linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_{i+1}}}$')
+            ax1.set_xlabel('k')
+            ax1.set_ylabel(f'$h_{i+1} [cm]$')
+            # ax1.title(f"Poziom wody w {i+1} zbiorniku")
+            ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
+            ax1.grid()
+
+    else:
+        cyberattack_detector = None
 
     if close_loop:
         SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
@@ -87,7 +144,7 @@ def main_function() -> None:
         # SP_h2 = np.array([h0[1], h0[1]])
         SP_h = np.vstack((SP_h1, SP_h2))
         SP_h = np.repeat(SP_h, step_dur, axis=1)
-        print(f"{SP_h}")
+        # print(f"{SP_h}")
         n_sampl = np.shape(SP_h)[1]
 
     else:
@@ -110,11 +167,11 @@ def main_function() -> None:
     qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
 
     simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
-                            S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
+                            S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd, cyberattack_detector=cyberattack_detector
                             # , noise_sigma, e_sigma
                             )
 
-    h, y, z, q, e, h_model = simulation.run(h0,
+    h, y, z, q, e, h_model, attack_signal = simulation.run(h0,
                                 close_loop,
                                 model_list=model_list,
                                 recursion_mode=recursion_mode,
@@ -193,7 +250,7 @@ def main_function() -> None:
         if attack_scenario is not None:
             # Add secondary y-axis to the first subplot
             ax2_secondary = ax2.twinx()
-            ax2_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+            ax2_secondary.plot(time, attack_binary, color='tab:red', linestyle='--', label='cyberatak')
             ax2_secondary.set_ylabel('Sygnał binarny cyberataku')
             # set y-axis to only show integer values
             ax2_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -219,6 +276,7 @@ def main_function() -> None:
             title_recursion = 'z rekurencją'
         else:
             title_recursion = 'bez rekurencji'
+
         fig2=plt.figure(figsize=(8, 9))
         fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part} w trybie {title_recursion}')
         for i, hi in enumerate(z[:2, :]):
@@ -238,6 +296,8 @@ def main_function() -> None:
                 # Add secondary y-axis to the first subplot
                 ax1_secondary = ax1.twinx()
                 ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+                if model_type is not None:
+                    ax1_secondary.fill_between(time, attack_signal[:, i].astype(float), color='m', alpha=0.2, label=f'wykryty cyberatak')
                 ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
                 # set y-axis to only show integer values
                 ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))

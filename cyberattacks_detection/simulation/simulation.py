@@ -30,7 +30,7 @@ class Simulation:
                 # noise_sigma: float=0.1, 
                 # e_sigma: float=0.005,
                 clip=False,
-                attack_scenario=None,
+                cyberattack_detector=None,
                 ) -> None:
         
         self.qa_max = qa_max
@@ -43,6 +43,7 @@ class Simulation:
 
         self.process = FourTankProcess(self.n_sampl, self.Ts, a, S, gamma_a, gamma_b, h_max, h_min, self.tau_y, self.tau_u, clip, qd)
         self.sensor  = Sensor(self.n_sampl, self.tau_y, c)
+        self.cyberattack_detector = cyberattack_detector
 
         self.F = np.array(
             [[1, 0, 0, 0],
@@ -206,7 +207,7 @@ class Simulation:
             self.q = kwargs['q']
             self.e = None
 
-        self.h_model = self.process.h.copy()
+        self.h_model = self.process.h[:len(model_list), :].copy()
 
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
             if close_loop:
@@ -226,11 +227,22 @@ class Simulation:
                         h_model_t.append(model.predict(inputs)[0])
                 self.h_model[:, [t]] = np.array(h_model_t)
             else:
-                self.h_model[:, [t]] = self.process.h[:, [t]]
+                self.h_model[:, [t]] = self.process.h[:len(model_list), [t]]
+
+            if self.cyberattack_detector is not None:
+                self.cyberattack_detector.detect(self.sensor.y[:len(self.h_model)], self.h_model, t)
 
 
-        self.q[:, [self.n_sampl-1]] = None
+        self.q[:, [self.n_sampl-1]] = np.nan
         if close_loop:
             self.e[:, [self.n_sampl-1]] = None
+        if self.cyberattack_detector is not None:
+                attack_signal = np.array(self.cyberattack_detector.attack_signal)
+                expanded_attack_signal = np.empty((self.n_sampl, attack_signal.shape[1]), dtype=object)
+                expanded_attack_signal.fill(None)
+                # Copy the original array data into the new array
+                expanded_attack_signal[-attack_signal.shape[0]:, :] = attack_signal
+        else:
+            expanded_attack_signal = None
 
-        return self.process.h, self.sensor.y, self.z, self.q, self.e, self.h_model
+        return self.process.h, self.sensor.y, self.z, self.q, self.e, self.h_model, expanded_attack_signal
