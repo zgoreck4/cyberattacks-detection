@@ -148,8 +148,8 @@ def main_function() -> None:
         cyberattack_detector = None
 
     if close_loop:
-        SP_h1 = np.array([h0[0], 60, 60, 100, 70, 70, 105])
-        SP_h2 = np.array([h0[1], h0[1], 50, 80, 60, 85, 110])
+        SP_h1 = np.array([h0[0], 60,    60, 60, 100, 100, 100])
+        SP_h2 = np.array([h0[1], h0[1], 50, 80, 80, 105, 90])
         # SP_h1 = np.array([h0[0], 80])
         # SP_h2 = np.array([h0[1], h0[1]])
         SP_h = np.vstack((SP_h1, SP_h2))
