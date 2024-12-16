@@ -183,7 +183,7 @@ def main_function() -> None:
                                 num_tank=num_tank,
                                 attack_time=attack_time,
                                 attack_value=attack_value,
-                                tau_y=tau_y_ca)
+                                tau_y_ca=tau_y_ca)
 
     for i in range(4):
         print(F"h{i+1} = {h[i, [-1]][0]}")
