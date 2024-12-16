@@ -4,6 +4,7 @@ from .process import FourTankProcess
 from .sensor import Sensor
 from .cyber_attack import CyberAttack
 from numpy.typing import NDArray
+import warnings
 
 g = 981 # cm/s^2
 
@@ -220,7 +221,9 @@ class Simulation:
             if model_list is not None:
                 for model in model_list:
                     inputs = self._prepare_model_inputs(t, model, recursion_mode)
-                    h_model_t.append(model.predict(inputs)[0])
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings("ignore", message="X does not have valid feature names")
+                        h_model_t.append(model.predict(inputs)[0])
             self.h_model[:, [t]] = np.array(h_model_t)
 
 
