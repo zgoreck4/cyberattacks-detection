@@ -56,6 +56,7 @@ class Simulation:
     def _set_init_state(self, h0, attack_scenario, num_tank, **kwargs):
         self.process.set_init_state(h0)
         self.z = self.F @ self.process.h
+        self.sensor.set_init_state(self.process.h[:, :len(h0)])
         # self.e = self.SP_h - self.z
         if attack_scenario is not None:
             self.cyberattack = CyberAttack(self.process, self.sensor, attack_scenario, num_tank, **kwargs)
