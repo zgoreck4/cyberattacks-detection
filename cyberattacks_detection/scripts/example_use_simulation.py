@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import cycler
 from pathlib import Path
 from ..simulation import Simulation
 import pickle
@@ -209,6 +210,16 @@ def main_function() -> None:
     plt.rcParams.update({
         'axes.titlesize': 10,    # Titles of subplots
         'axes.labelsize': 9,     # Labels for axes
+        'axes.prop_cycle': cycler.cycler(
+            color=['tab:blue',
+                   'tab:orange',
+                   'tab:green',
+                   'tab:brown',
+                   'tab:purple',
+                   'tab:cyan',
+                   'tab:pink',
+                   'tab:olive']
+            ),
         'xtick.labelsize': 9,    # X-axis tick labels
         'ytick.labelsize': 9,    # Y-axis tick labels
         'legend.fontsize': 7,     # Legend font size
