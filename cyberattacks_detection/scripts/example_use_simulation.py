@@ -82,6 +82,16 @@ def main_function() -> None:
         model4 = ELM(0, 0)
         model4.load_model(f"{model_path}/elm_x4.npz")
         model_list = [model1, model2, model3, model4]
+    elif model_type == 'rbf':
+        model1 = RBFNN(None)
+        model1.load_model(f"{model_path}/rbf_x1.npz")
+        model2 = RBFNN(None)
+        model2.load_model(f"{model_path}/rbf_x2.npz")
+        model3 = RBFNN(None)
+        model3.load_model(f"{model_path}/rbf_x3.npz")
+        model4 = RBFNN(None)
+        model4.load_model(f"{model_path}/rbf_x4.npz")
+        model_list = [model1, model2, model3, model4]
     else:
         model_list = None
 
