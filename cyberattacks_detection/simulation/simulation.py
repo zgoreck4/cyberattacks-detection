@@ -217,14 +217,14 @@ class Simulation:
                 self.cyberattack.apply_attack(t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
-            h_model_t = []
             if model_list is not None:
+                h_model_t = []
                 for model in model_list:
                     inputs = self._prepare_model_inputs(t, model, recursion_mode)
                     with warnings.catch_warnings():
                         warnings.filterwarnings("ignore", message="X does not have valid feature names")
                         h_model_t.append(model.predict(inputs)[0])
-            self.h_model[:, [t]] = np.array(h_model_t)
+                self.h_model[:, [t]] = np.array(h_model_t)
 
 
         self.q[:, [self.n_sampl-1]] = None
