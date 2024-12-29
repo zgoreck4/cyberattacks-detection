@@ -144,6 +144,7 @@ def main_function() -> None:
             # ax1.title(f"Poziom wody w {i+1} zbiorniku")
             ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
             ax1.grid()
+        plt.show()
 
     else:
         cyberattack_detector = None
@@ -286,7 +287,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.3)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/SP_PV_{model_type}_att_{attack_scenario}.png")
+            plt.savefig(f"{plot_path}/SP_PV_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png")
         plt.show()
 
         if model_type is not None:
@@ -299,10 +300,11 @@ def main_function() -> None:
             title_recursion = 'bez rekurencji'
 
         fig2=plt.figure(figsize=(8, 9))
-        fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part} w trybie {title_recursion}')
-        for i, hi in enumerate(z[:2, :]):
+        # fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part} w trybie {title_recursion}')
+        fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part}')
+        for i, (zi, hi) in enumerate(zip(z[:2, :], h[:2, :])):
             ax1 = plt.subplot(2, 1, i+1)
-            ax1.plot(time, hi, label=f'pomiar $h_{i+1}$')
+            ax1.plot(time, zi, label=f'pomiar $h_{i+1}$')
             # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
             # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
             if model_type is not None:
@@ -310,24 +312,25 @@ def main_function() -> None:
             ax1.set_xlabel('k')
             ax1.set_ylabel(f'$h_{i+1} [cm]$')
             # ax1.title(f"Poziom wody w {i+1} zbiorniku")
-            ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.2, 1.0))
             ax1.grid()
 
             if attack_scenario is not None:
+                ax1.plot(time, hi, linestyle='-.', label=f'rzecz. $h_{i+1}$')
                 # Add secondary y-axis to the first subplot
                 ax1_secondary = ax1.twinx()
                 ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
                 if model_type is not None:
-                    ax1_secondary.fill_between(time, attack_signal[:, i].astype(float), color='m', alpha=0.2, label=f'wykryty cyberatak')
+                    ax1_secondary.fill_between(time, attack_signal[:, i].astype(float), color='r', alpha=0.2, label=f'wykryty cyberatak')
                 ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
                 # set y-axis to only show integer values
                 ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
                 ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
+            ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.2, 1.0))
 
         # plt.subplots_adjust(hspace=0.5)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/h_{model_type}_rec_{recursion_mode}_att_{attack_scenario}.png")
+            plt.savefig(f"{plot_path}/h__{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png")
         plt.show()
 
     else:
