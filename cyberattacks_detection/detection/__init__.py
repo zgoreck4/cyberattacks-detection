@@ -1,4 +1,4 @@
-from .CyberattackDetector import CyberattackDetector
+from .cyberattack_detector import CyberattackDetector
 
 __all__ = [
     "CyberattackDetector"
