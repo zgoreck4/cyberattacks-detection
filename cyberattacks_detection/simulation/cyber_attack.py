@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from .sensor import Sensor
 
 class CyberAttack:
-    def __init__(self, process: "FourTankProcess", sensor: "Sensor", attack_scenario: int, num_tank_list:list[int], attack_value: float=None, tau_y: int=0, **kwargs) -> None:
+    def __init__(self, process: "FourTankProcess", sensor: "Sensor", attack_scenario: int, num_tank_list:list[int], attack_value: float=None, tau_y_ca: int=0, **kwargs) -> None:
         self.process = process
         self.sensor = sensor
         self.num_tank_list = num_tank_list
@@ -19,10 +19,10 @@ class CyberAttack:
             self.attack_value = attack_value
             self.step_value = attack_value
         elif attack_scenario == 2:
-            self.tau_y = tau_y
+            self.tau_y_ca = tau_y_ca
             self.attack_scenario = self.add_delay
         elif attack_scenario == 3:
-            self.tau_y = tau_y
+            self.tau_y_ca = tau_y_ca
             self.attack_value = attack_value
             self.step_value = attack_value
             self.attack_scenario = self.add_delay_grad_increase
@@ -35,7 +35,7 @@ class CyberAttack:
         self.attack_value += self.step_value
 
     def add_delay(self, k: int) -> None:
-        self.sensor.y[self.num_tank_list, k] = self.process.h[self.num_tank_list, k-self.tau_y]
+        self.sensor.y[self.num_tank_list, k] = self.process.h[self.num_tank_list, k-self.tau_y_ca]
 
     def add_delay_grad_increase(self, k: int) -> None:
         self.add_delay(k)

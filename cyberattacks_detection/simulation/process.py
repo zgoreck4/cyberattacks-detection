@@ -40,4 +40,4 @@ class FourTankProcess:
         # if qd[:, [t]].any()<0:
         self.h[:, t] = np.clip(self.h[:, t], 0, None) # przycinanie gdyby po dodaniu szumu otrzymano ujemną wartość
         if self.clip:
-            self.h[:, t+1] = np.clip(self.h[:, t+1], self.h_min, self.h_max)
+            self.h[:, t] = np.clip(self.h[:, t], self.h_min, self.h_max)

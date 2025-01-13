@@ -10,6 +10,9 @@ class Sensor:
         [0, 0, c[2], 0],
         [0, 0, 0, c[3]]])
 
+    def set_init_state(self, h):
+        self.y[:, :len(h)] = self.C @ h
+
     def measure(self, h, t) -> None:
         # można dodać jeszcze szum do pomiaru
         self.y[:, [t]] = self.C @ h[:, [t-self.tau_y]] # + np.random.randn(4,1)*e_sigma*active_noise
