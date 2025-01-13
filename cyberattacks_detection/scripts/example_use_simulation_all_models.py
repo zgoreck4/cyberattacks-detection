@@ -25,6 +25,9 @@ def main_function() -> None:
     window_detection = 100
     threshold_method = 'z-score' # 'percentile'
 
+    active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
+    noise_sigma = 0.15 # 0.1
+
     tau_u = 0
     tau_y = 0
     # h0 = [65, 66, 65, 66]
@@ -37,9 +40,6 @@ def main_function() -> None:
     # h0 = [86.33849517038516, 49.20411218062061, 29.28980640192163, 12.088614918668185]
     # h0 = [12.4, 1.8, 12.7, 1.4]
     # h0 = [12.6, 4.8, 13, 4.9]
-    active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
-    noise_sigma = 0.1
-    e_sigma = 0.005
 
     h_max = [[136],
             [136],
@@ -144,21 +144,21 @@ def main_function() -> None:
             cyberattack_detector = CyberattackDetector(window=window_detection)
             cyberattack_detector.calc_threshold(h_normal[:len(h_model_normal), :], h_model_normal, method=threshold_method)
 
-            # plt.figure(figsize=(8, 9))
-            # plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
-            # for i, (h_i, h_model_i) in enumerate(zip(h_normal, h_model_normal)):
-            #     ax1 = plt.subplot(4, 1, i+1)
-            #     ax1.plot(time, h_i, label=f'pomiar $h_{i+1}$')
-            #     # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
-            #     # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
-            #     if model_type is not None:
-            #         ax1.plot(time, h_model_i, linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_{i+1}}}$')
-            #     ax1.set_xlabel('t [s]')
-            #     ax1.set_ylabel(f'$h_{i+1} [cm]$')
-            #     # ax1.title(f"Poziom wody w {i+1} zbiorniku")
-            #     ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
-            #     ax1.grid()
-            # plt.show()
+            plt.figure(figsize=(8, 9))
+            plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
+            for i, (h_i, h_model_i) in enumerate(zip(h_normal, h_model_normal)):
+                ax1 = plt.subplot(4, 1, i+1)
+                ax1.plot(time, h_i, label=f'pomiar $h_{i+1}$')
+                # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
+                # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
+                if model_type is not None:
+                    ax1.plot(time, h_model_i, linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_{i+1}}}$')
+                ax1.set_xlabel('t [s]')
+                ax1.set_ylabel(f'$h_{i+1} [cm]$')
+                # ax1.title(f"Poziom wody w {i+1} zbiorniku")
+                ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
+                ax1.grid()
+            plt.show()
 
         else:
             cyberattack_detector = None
@@ -279,7 +279,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.5)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png",
+            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_noise_{active_noise}.png",
                         bbox_inches ='tight')
         plt.show()
 
@@ -343,7 +343,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.6)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png",
+            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_noise_{active_noise}.png",
                         bbox_inches ='tight')
         plt.show()
 
