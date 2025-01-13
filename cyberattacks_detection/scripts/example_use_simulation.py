@@ -21,6 +21,9 @@ def main_function() -> None:
     window_detection = 50
     threshold_method = 'z-score' # 'percentile'
 
+    active_noise = True # wartość False wyłącza zakłócenia, wartość True włącza
+    noise_sigma = 0.2 # 0.1
+
     tau_u = 0
     tau_y = 0
     # h0 = [65, 66, 65, 66]
@@ -33,9 +36,6 @@ def main_function() -> None:
     # h0 = [86.33849517038516, 49.20411218062061, 29.28980640192163, 12.088614918668185]
     # h0 = [12.4, 1.8, 12.7, 1.4]
     # h0 = [12.6, 4.8, 13, 4.9]
-    active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
-    noise_sigma = 0.1
-    e_sigma = 0.005
 
     h_max = [[136],
             [136],
