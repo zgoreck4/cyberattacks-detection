@@ -195,6 +195,10 @@ class Simulation:
             attack_scenario=None,
             attack_time=None,
             num_tank=None,
+            variability=False,
+            param_name=None,
+            param_value=None,
+            time_change=None,
             **kwargs):
         self._set_init_state(h0, attack_scenario, num_tank, **kwargs)
 
@@ -213,6 +217,12 @@ class Simulation:
         for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
             if close_loop:
                 self._calc_q(t)
+            if (variability) and (t == time_change):
+                try:
+                    self.process.__setattr__(param_name, param_value)
+                    print(f"Zmieniono wartość {param_name} na {self.process.__getattribute__(param_name)}")
+                except:
+                    print("Incorrect process parameter name")
             self.process.update_state(self.q, t)
             self.sensor.measure(self.process.h, t)
             if (attack_scenario is not None) and (t >= attack_time):
