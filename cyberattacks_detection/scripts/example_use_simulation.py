@@ -21,8 +21,16 @@ def main_function() -> None:
     window_detection = 50
     threshold_method = 'z-score' # 'percentile'
 
-    active_noise = True # wartość False wyłącza zakłócenia, wartość True włącza
+    variability=True
+    param_name='gamma_a'
+    param_value=0.2
+
+    active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
     noise_sigma = 0.2 # 0.1
+    
+    if variability==False:
+        param_name=None
+        param_value=None
 
     tau_u = 0
     tau_y = 0
@@ -97,7 +105,7 @@ def main_function() -> None:
         model_list = None
 
     # należy ustawić próg w detektorze na podstawie normalnej pracy
-    if (attack_scenario is not None) and model_list is not None:
+    if ((attack_scenario is not None) or (variability == True)) and model_list is not None:
         SP_h1 = np.array([h0[0], h0[0], 70, 70, 95, 95, 90
                           #, 90, 40
                           ])
@@ -174,7 +182,8 @@ def main_function() -> None:
     time = np.arange(0, T, T_s)
     T = max(time)
 
-    attack_time = n_sampl//2
+    attack_time = n_sampl//2    
+    time_change=n_sampl//3
 
     qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
 
@@ -195,7 +204,12 @@ def main_function() -> None:
                                 num_tank=num_tank,
                                 attack_time=attack_time,
                                 attack_value=attack_value,
-                                tau_y_ca=tau_y_ca)
+                                tau_y_ca=tau_y_ca,
+                                variability=variability,
+                                param_name=param_name,
+                                param_value=param_value,
+                                time_change=time_change
+                                )
 
     for i in range(4):
         print(F"h{i+1} = {h[i, [-1]][0]}")
@@ -230,6 +244,7 @@ def main_function() -> None:
     plot_path = Path(__file__).parent.parent / "plots"
 
     attack_binary = np.hstack((np.zeros(attack_time+1), np.ones(T-attack_time)))
+    change_binary = np.hstack((np.zeros(time_change+1), np.ones(T-time_change)))
 
     if close_loop:
 
@@ -245,13 +260,15 @@ def main_function() -> None:
         ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.1, 1.0))
         ax1.grid()
 
-        if attack_scenario is not None:
-            # Add secondary y-axis to the first subplot
+        if (attack_scenario is not None) or (variability is not None):
             ax1_secondary = ax1.twinx()
-            ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
-            ax1_secondary.set_ylabel('Sygnał binarny cyberataku')
-            # set y-axis to only show integer values
+            ax1_secondary.set_ylabel('Sygnał binarny')
             ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+        if attack_scenario is not None:
+            ax1_secondary.plot(time, attack_binary, color='tab:red', linestyle='--', label='cyberatak')
+        if variability==True:
+            ax1_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
+        if (attack_scenario is not None) or (variability is not None):
             ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
 
 
@@ -269,13 +286,15 @@ def main_function() -> None:
         ax2.legend(loc='best', bbox_to_anchor=(0, 0, 0.1, 1.0))
         ax2.grid()
 
-        if attack_scenario is not None:
-            # Add secondary y-axis to the first subplot
+        if (attack_scenario is not None) or (variability is not None):
             ax2_secondary = ax2.twinx()
-            ax2_secondary.plot(time, attack_binary, color='tab:red', linestyle='--', label='cyberatak')
-            ax2_secondary.set_ylabel('Sygnał binarny cyberataku')
-            # set y-axis to only show integer values
+            ax2_secondary.set_ylabel('Sygnał binarny')
             ax2_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+        if attack_scenario is not None:
+            ax2_secondary.plot(time, attack_binary, color='tab:red', linestyle='--', label='cyberatak')
+        if variability==True:
+            ax2_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
+        if (attack_scenario is not None) or (variability is not None):
             ax2_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0., 0.2, 1.0))
 
         # plt.subplot(3, 1, 3)
@@ -287,7 +306,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.3)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/SP_PV_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png")
+            plt.savefig(f"{plot_path}/SP_PV_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_variability_{param_name}_{param_value}_noise_{active_noise}.png")
         plt.show()
 
         if model_type is not None:
@@ -330,7 +349,7 @@ def main_function() -> None:
         # plt.subplots_adjust(hspace=0.5)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/h__{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.png")
+            plt.savefig(f"{plot_path}/h__{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_variability_{param_name}_{param_value}_noise_{active_noise}.png")
         plt.show()
 
     else:
@@ -369,7 +388,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.3)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/sub_bench{bench_name}_{operating_point}.png")
+            plt.savefig(f"{plot_path}/sub_bench{bench_name}_{operating_point}_variability_{param_name}_{param_value}_noise_{active_noise}.png")
         plt.show()
 
 if __name__ == "__main__":

@@ -22,11 +22,24 @@ def main_function() -> None:
     tau_y_ca = 50
     # model_type = 'lr' # None
     recursion_mode = True
-    window_detection = 100
-    threshold_method = 'z-score' # 'percentile'
+    window_detection = 110 # 110
+    threshold_method = 'percentile' # 'z-score' # 'percentile'
+    kwargs = {'n_std': 3, 'percentile': 98.5}
+
+    variability=False
+    # param_name='gamma_a'
+    # param_value=0.2 # z 0.3 na 0.2
+    param_name = 'a'
+    param_value = np.array([1.2, 1.51, 0.927, 0.882])
 
     active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
     noise_sigma = 0.15 # 0.1
+    
+    if variability==False:
+        param_name=None
+        param_value=None
+
+    threshold_method_dict = {'z-score': f'z-score (z={kwargs["n_std"]})', 'percentile': f'oparta na percent. ({kwargs["percentile"]}%)'}
 
     tau_u = 0
     tau_y = 0
@@ -115,9 +128,11 @@ def main_function() -> None:
             model_list = None
 
         # należy ustawić próg w detektorze na podstawie normalnej pracy
-        if (attack_scenario is not None) and model_list is not None:
-            SP_h1 = np.array([h0[0], h0[0], 80, 80, 100, 100, 90])
-            SP_h2 = np.array([h0[1], 55,   55, 95, 95, 105, 105])
+        if ((attack_scenario is not None) or (variability == True)) and model_list is not None:
+            SP_h1 = np.array([h0[0], h0[0], 50, 50, 80, 80, 100, 100, 90, 90, 40])
+            SP_h2 = np.array([h0[1], 55,   55, 70, 70, 95, 95, 105, 105, 60, 60])
+            # SP_h1 = np.array([h0[0], h0[0], 80, 80, 100, 100, 90])
+            # SP_h2 = np.array([h0[1], 55,   55, 95, 95, 105, 105])
             SP_h = np.vstack((SP_h1, SP_h2))
             SP_h = np.repeat(SP_h, step_dur, axis=1)
 
@@ -142,23 +157,23 @@ def main_function() -> None:
                                         attack_scenario=None)
             
             cyberattack_detector = CyberattackDetector(window=window_detection)
-            cyberattack_detector.calc_threshold(h_normal[:len(h_model_normal), :], h_model_normal, method=threshold_method)
+            cyberattack_detector.calc_threshold(h_normal[:len(h_model_normal), :], h_model_normal, method=threshold_method, **kwargs)
 
-            plt.figure(figsize=(8, 9))
-            plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
-            for i, (h_i, h_model_i) in enumerate(zip(h_normal, h_model_normal)):
-                ax1 = plt.subplot(4, 1, i+1)
-                ax1.plot(time, h_i, label=f'pomiar $h_{i+1}$')
-                # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
-                # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
-                if model_type is not None:
-                    ax1.plot(time, h_model_i, linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_{i+1}}}$')
-                ax1.set_xlabel('t [s]')
-                ax1.set_ylabel(f'$h_{i+1} [cm]$')
-                # ax1.title(f"Poziom wody w {i+1} zbiorniku")
-                ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
-                ax1.grid()
-            plt.show()
+            # plt.figure(figsize=(8, 9))
+            # plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
+            # for i, (h_i, h_model_i) in enumerate(zip(h_normal, h_model_normal)):
+            #     ax1 = plt.subplot(4, 1, i+1)
+            #     ax1.plot(time, h_i, label=f'pomiar $h_{i+1}$')
+            #     # plt.axhline(y=h_max[i], color='black', linestyle='--', label=f'h_max{i+1}')
+            #     # plt.axhline(y=h_min[i], color='black', linestyle='--', label=f'h_min{i+1}')
+            #     if model_type is not None:
+            #         ax1.plot(time, h_model_i, linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_{i+1}}}$')
+            #     ax1.set_xlabel('t [s]')
+            #     ax1.set_ylabel(f'$h_{i+1} [cm]$')
+            #     # ax1.title(f"Poziom wody w {i+1} zbiorniku")
+            #     ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.5, 1.0))
+            #     ax1.grid()
+            # plt.show()
 
         else:
             cyberattack_detector = None
@@ -177,7 +192,8 @@ def main_function() -> None:
         time = np.arange(0, T, T_s)
         T = max(time)
 
-        attack_time = n_sampl//2
+        attack_time = n_sampl//2 # n_sampl//3 * 2
+        time_change=n_sampl//4
 
         qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
 
@@ -198,7 +214,11 @@ def main_function() -> None:
                                     num_tank=num_tank,
                                     attack_time=attack_time,
                                     attack_value=attack_value,
-                                    tau_y_ca=tau_y_ca)
+                                    tau_y_ca=tau_y_ca,
+                                    variability=variability,
+                                    param_name=param_name,
+                                    param_value=param_value,
+                                    time_change=time_change)
         h.append(hi)
         y.append(yi)
         z.append(zi)
@@ -210,8 +230,8 @@ def main_function() -> None:
 
     # Set global font sizes for different elements
     plt.rcParams.update({
-        'axes.titlesize': 20,    # Titles of subplots
-        'axes.labelsize': 14,     # Labels for axes
+        'axes.titlesize': 11,    # Titles of subplots
+        'axes.labelsize': 9,     # Labels for axes
         'axes.prop_cycle': cycler.cycler(
             color=['tab:blue',
                    'tab:orange',
@@ -222,64 +242,65 @@ def main_function() -> None:
                    'tab:pink',
                    'tab:olive']
             ),
-        'xtick.labelsize': 14,    # X-axis tick labels
-        'ytick.labelsize': 14,    # Y-axis tick labels
-        'legend.fontsize': 14,     # Legend font size
-        'figure.titlesize': 24    # Overall figure title size (if used)
+        'xtick.labelsize': 9,    # X-axis tick labels
+        'ytick.labelsize': 9,    # Y-axis tick labels
+        'legend.fontsize': 7,     # Legend font size
+        'figure.titlesize': 12    # Overall figure title size (if used)
     })
 
-    plot_path = Path(__file__).parent.parent / "plots/SDM2"
+    plot_path = Path(__file__).parent.parent / "plots/art"
     
     result_path = Path(__file__).parent.parent / "results"
 
     attack_binary = np.hstack((np.zeros(attack_time+1), np.ones(T-attack_time)))
+    change_binary = np.hstack((np.zeros(time_change+1), np.ones(T-time_change)))
     
     def calc_NRMSE(true, predict, y_name_idx):
         RMSE = metrics.root_mean_squared_error(true, predict)    
         return RMSE/(h_max[0][y_name_idx] - h_min[0][y_name_idx])
 
-    if attack_scenario is None:
+    if (attack_scenario is None) and (variability==False):
 
-        fig2 = plt.figure(figsize=(13, 9))
-        # fig2.suptitle("Stan Normalny procesu")
+        fig2 = plt.figure(figsize=(13, 2))
+        fig2.suptitle("Stan normalny procesu")
 
-        ax1 = plt.subplot(3, 1, 1, sharex=None)
-        ax1.plot(time, q[0][0], label='$q_A$')
-        ax1.plot(time, q[0][1], label='$q_B$')
-        # plt.axhline(y=qa_max, color='black', linestyle='--', label='Pompa A max')
-        # plt.axhline(y=qb_max, color='grey', linestyle='--', label='Pompa B max')
-        ax1.set_ylabel('$q [cm^3/s]$')
-        ax1.set_title('Przepływ pomp')
-        ax1.legend(loc='center left')
-        ax1.grid()
+        # ax1 = plt.subplot(3, 1, 1, sharex=None)
+        # ax1.plot(time, q[0][0], label='$q_A$')
+        # ax1.plot(time, q[0][1], label='$q_B$')
+        # # plt.axhline(y=qa_max, color='black', linestyle='--', label='Pompa A max')
+        # # plt.axhline(y=qb_max, color='grey', linestyle='--', label='Pompa B max')
+        # ax1.set_ylabel('$q [cm^3/s]$')
+        # ax1.set_title('Przepływ pomp')
+        # ax1.legend(loc='center left')
+        # ax1.grid()
 
-        ax2 = plt.subplot(3, 1, 2, sharex=ax1)
-        ax2.plot(time, z[0][0], label='$h_1$')
-        # TODO: do wyrzucenia???
-        ax2.plot(time, z[0][1], label='$h_2$')
-        print(np.hstack((time, [max(time)+1])))
-        ax2.step(time, SP_h[0], label='$w_1$', linestyle='-.')
-        ax2.step(time, SP_h[1], label='$w_2$', linestyle=(0, (5, 5)))
-        ax2.set_ylabel('h [cm]')
-        ax2.set_title("Zmierzony i zadany poziom w zbiornikach")
-        ax2.legend(loc='center left')
-        ax2.grid()
+        # ax2 = plt.subplot(3, 1, 2, sharex=ax1)
+        # ax2.plot(time, z[0][0], label='$h_1$')
+        # # TODO: do wyrzucenia???
+        # ax2.plot(time, z[0][1], label='$h_2$')
+        # print(np.hstack((time, [max(time)+1])))
+        # ax2.step(time, SP_h[0], label='$w_1$', linestyle='-.')
+        # ax2.step(time, SP_h[1], label='$w_2$', linestyle=(0, (5, 5)))
+        # ax2.set_ylabel('h [cm]')
+        # ax2.set_title("Zmierzony i zadany poziom w zbiornikach")
+        # ax2.legend(loc='center left')
+        # ax2.grid()
 
-        ax3 = plt.subplot(3, 1, 3, sharex=ax1)
+        ax3 = plt.subplot(1, 1, 1)
         ax3.plot(time, z[0][num_tank], label='$h_1$')
         # h_model_i - NDArray z wynikami dla modeli 1 typu, ale różnych zbiorników
         for h_model_i, model_type in zip(h_model, model_type_tuple):
             ax3.plot(time, h_model_i[num_tank], linestyle='--', label=rf'model {model_type.upper()} $\hat{{h_1}}$')
         ax3.set_xlabel('t [s]')
         ax3.set_ylabel('h [cm]')
-        ax3.set_title("Rzeczywisty i modelowany poziom w 1. zbiorniku")
+        # ax3.set_title("Rzeczywisty i modelowany poziom w 1. zbiorniku")
         ax3.legend(loc='center left')
         ax3.grid()
 
-        plt.subplots_adjust(hspace=0.5)
+        # plt.subplots_adjust(hspace=0.5)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_noise_{active_noise}.png",
+            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.png",
                         bbox_inches ='tight')
         plt.show()
 
@@ -304,8 +325,11 @@ def main_function() -> None:
 
             indices = np.where((attack_binary[:-1] == 0) & (attack_binary[1:] == 1))[0]
             attack_time = indices[0]
+            print(f"{attack_time=}")
             indices = np.where((attack_signal_i[:-1] == 0) & (attack_signal_i[1:] == 1))[0]
+            print(indices)
             indices = indices[indices>attack_time]
+            print(indices)
             if len(indices) == 0:
                 attack_time_delay = None
             else:
@@ -316,11 +340,12 @@ def main_function() -> None:
             result_df.loc[model_type.upper()] = [attack_time_delay, round(recall, 4), round(fpr, 4)]
             result_df.index.name = 'Model'
 
-        result_df.to_excel(f"{result_path}/result_df_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}.xlsx")
-        
-        fig2=plt.figure(figsize=(13, 9))
+        result_df.to_excel(f"{result_path}/result_df_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.xlsx")
+        print(result_df)
+
+        fig2=plt.figure(figsize=(6, 6))
         # fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part} w trybie {title_recursion}')
-        fig2.suptitle(f'Poziom cieczy w 1. zbiorniku')
+        fig2.suptitle(f'Cyberatak - scenariusz {attack_scenario+1}.\nOkno czasowe o dł. {window_detection}')
         for i, (zi, hi, h_modeli, model_type, attack_signali) in enumerate(zip(z, h, h_model, model_type_tuple, attack_signal)):
             ax1 = plt.subplot(3, 1, i+1)
             ax1.plot(time, zi[num_tank], label=f'pomiar $h_{num_tank+1}$')
@@ -332,9 +357,13 @@ def main_function() -> None:
             ax1.grid()
             # Add secondary y-axis to the first subplot
             ax1_secondary = ax1.twinx()
-            ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
             ax1_secondary.fill_between(time, attack_signali[:, num_tank].astype(float), color='r', alpha=0.2, label=f'wykryty cyberatak')
+            if attack_scenario is not None:
+                ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+            if variability==True:
+                ax1_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
             ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
+            # ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
             # set y-axis to only show integer values
             ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
             ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0.1, 0.2, 0.8))
@@ -343,7 +372,7 @@ def main_function() -> None:
         plt.subplots_adjust(hspace=0.6)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_method_{threshold_method}_noise_{active_noise}.png",
+            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.png",
                         bbox_inches ='tight')
         plt.show()
 
