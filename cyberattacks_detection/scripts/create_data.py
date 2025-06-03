@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import cycler
 from ..simulation import Simulation
 from pathlib import Path
 
@@ -11,9 +12,9 @@ attack_scenario = None
 
 tau_u = 0
 tau_y = 0
-active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
-noise_sigma = 0.2
-e_sigma = 0.01
+active_noise = True # wartość False wyłącza zakłócenia, wartość True włącza
+noise_sigma = 0.15
+# e_sigma = 0.01
 
 qa_max = 3260000/3600
 qb_max = 4000000/3600
@@ -34,7 +35,7 @@ elif dataset_name == 'walidacyjne':
     qb = np.hstack((np.array(2*1000000/3600), np.random.rand(n_step_val-1)*qb_max*0.8+q_min))
 
 elif dataset_name == 'testowe':
-    np.random.seed(0)
+    np.random.seed(32)
     n_step_val = 5
     qa = np.hstack((np.array(1.63*1000000/3600), np.random.rand(n_step_val-1)*qa_max*0.8+q_min))
     qb = np.hstack((np.array(2*1000000/3600), np.random.rand(n_step_val-1)*qb_max*0.8+q_min))
@@ -71,7 +72,7 @@ simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                         # , noise_sigma, e_sigma
                         )
 
-h, y, z, q, e = simulation.run(h0, close_loop, SP_h=SP_h, q=q, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario)
+h, y, z, q, e, _, _ = simulation.run(h0, close_loop, SP_h=SP_h, q=q, qa0=1630000/3600, qb0=2000000/3600, attack_scenario=attack_scenario)
 
 print(f"Min h: {np.min(h, axis=1)}")
 
@@ -89,19 +90,38 @@ if active_noise:
 else:
     title_end = f" bez zakłóceń"
 
-plot_path = Path(__file__).parent.parent / "plots"
+plot_path = Path(__file__).parent.parent / "plots/v4"
+
+plt.rcParams.update({
+        'axes.titlesize': 9,    # Titles of subplots
+        'axes.labelsize': 8,     # Labels for axes
+        'axes.prop_cycle': cycler.cycler(
+            color=['tab:blue',
+                   'tab:orange',
+                   'tab:green',
+                   'tab:brown',
+                   'tab:purple',
+                   'tab:cyan',
+                   'tab:pink',
+                   'tab:olive']
+            ),
+        'xtick.labelsize': 8,    # X-axis tick labels
+        'ytick.labelsize': 8,    # Y-axis tick labels
+        'legend.fontsize': 7,     # Legend font size
+        'figure.titlesize': 10    # Overall figure title size (if used)
+    })
 
 def plot_data(h, q, time, dataset_name):
-    fig=plt.figure(figsize=(8,11.5))
+    fig=plt.figure(figsize=(6,10))
     plt.subplot(3, 1, 1)
     plt.grid()
     plt.axhline(y=h_max, color='black', linestyle='--', label='$h_{max}$')
     plt.axhline(y=h_min, color='black', linestyle='--', label='$h_{min}$')
-    plt.plot(time, h[0], label='$h_1$')
-    plt.plot(time, h[1], label='$h_2$')
-    plt.plot(time, h[2], label='$h_3$')
-    plt.plot(time, h[3], label='$h_4$')
-    plt.xlabel('k')
+    plt.plot(time, h[0], label='$h_1$', linestyle='-')
+    plt.plot(time, h[1], label='$h_2$', linestyle='-.')
+    plt.plot(time, h[2], label='$h_3$', linestyle=(5, (10, 3)))
+    plt.plot(time, h[3], label='$h_4$', linestyle=':')
+    # plt.xlabel('k')
     plt.ylabel('h [cm]')
     plt.legend()
 
@@ -109,7 +129,7 @@ def plot_data(h, q, time, dataset_name):
     plt.grid()
     plt.axhline(y=qa_max, color='black', linestyle='--', label='$q_{Amax}$')
     plt.stairs(q[0], np.append(time, time[-1]+1), label='$q_A$')
-    plt.xlabel('k')
+    # plt.xlabel('k')
     plt.ylabel('$q_A [cm^3/s]$')
     plt.legend()
 
@@ -117,16 +137,17 @@ def plot_data(h, q, time, dataset_name):
     plt.grid()
     plt.axhline(y=qb_max, color='black', linestyle='--', label='$q_{Bmax}$')
     plt.stairs(q[1], np.append(time, time[-1]+1), label='$q_B$')
-    plt.xlabel('k')
+    plt.xlabel('t [s]')
     plt.ylabel('$q_B [cm^3/s]$')
     plt.legend()
 
     plt.subplots_adjust(hspace=0.25)
     fig.subplots_adjust(top=0.92)
-    fig.suptitle(f"Dane {dataset_name}{title_end}")
+    # fig.suptitle(f"Dane {dataset_name}{title_end}")
+    fig.suptitle(f"Dane {dataset_name}")
 
-    print(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.png")
-    plt.savefig(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.png", bbox_inches='tight')
+    print(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.pdf")
+    plt.savefig(f"{plot_path}/data_ol_{active_noise}_{dataset_name}_v5.pdf", bbox_inches='tight')
     plt.show()
 
 plot_data(h, q, time, dataset_name)
