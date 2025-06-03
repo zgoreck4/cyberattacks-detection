@@ -45,7 +45,7 @@ class FourTankProcess:
 
     def set_init_state(self, h0):
         for i in range(len(h0)):
-            self.h[i, 0:max(self.tau_u, self.tau_y, 3)] = h0[i]
+            self.h[i, 0:max(self.tau_u, self.tau_y, 4)] = h0[i]
 
     def update_state(self, q, t):
         self.h[:, [t]] = self.h[:, [t-1]] + self.Ts * (self.A @ (self.p * np.sqrt(self.h[:, [t-1]])) + self.B @ q[:, [t-1-self.tau_u]] + self.qd[:, [t-1]])
