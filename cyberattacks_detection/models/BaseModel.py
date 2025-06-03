@@ -17,13 +17,13 @@ class BaseModel(ABC):
         self.output_max_arr: NDArray = None
         self.feature_names_in_: list[str] = None
 
-    def _min_max_scale(self, X: NDArray | DataFrame, x_min: NDArray, x_max: NDArray) -> NDArray | DataFrame:
+    def _min_max_scale(self, X: Union[NDArray, DataFrame], x_min: NDArray, x_max: NDArray) -> Union[NDArray, DataFrame]:
         """
         Scale data to the range [0, 1].
         """
         return (X - x_min) / (x_max - x_min)
 
-    def _inverse_min_max_scale(self, X: NDArray | DataFrame, x_min: NDArray, x_max: NDArray) -> NDArray | DataFrame:
+    def _inverse_min_max_scale(self, X: Union[NDArray, DataFrame], x_min: NDArray, x_max: NDArray) -> Union[NDArray, DataFrame]:
         """
         Unscale data from the range [0, 1] to original range.
         """
@@ -31,7 +31,7 @@ class BaseModel(ABC):
     
     @abstractmethod
     def fit(self,
-            X: NDArray | DataFrame,
+            X: Union[NDArray, DataFrame],
             y: NDArray,
             input_min_arr: NDArray,
             input_max_arr: NDArray,
@@ -42,7 +42,7 @@ class BaseModel(ABC):
         pass
 
     @abstractmethod
-    def predict(self, X: NDArray | DataFrame) -> NDArray | DataFrame:
+    def predict(self, X: Union[NDArray, DataFrame]) -> Union[NDArray, DataFrame]:
         """
         Predict using the model.
         """
