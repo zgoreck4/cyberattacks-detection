@@ -2,6 +2,7 @@ import numpy as np
 from pandas import DataFrame
 from .BaseModel import BaseModel
 from numpy.typing import NDArray
+from typing import Union
 
 class ELM(BaseModel):
     def __init__(self, num_features, num_hidden_neurons):
@@ -15,7 +16,7 @@ class ELM(BaseModel):
         return 1/(1 + np.exp(- tempH))
 
     def fit(self,
-            X: NDArray | DataFrame,
+            X: Union[NDArray, DataFrame],
             y: NDArray,
             input_min_arr: NDArray,
             input_max_arr: NDArray,

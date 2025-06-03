@@ -4,6 +4,7 @@ import numpy as np
 from pandas import DataFrame
 from .BaseModel import BaseModel
 from numpy.typing import NDArray
+from typing import Union
 from .utils import *
 from sklearn.cluster import KMeans
 from scipy.spatial.distance import pdist
@@ -41,17 +42,18 @@ class RBFNN(BaseModel):
         return grad_sum
 
     def fit(self,
-            X: NDArray | DataFrame,
-            y: NDArray | DataFrame,
+            X: Union[NDArray, DataFrame],
+            y: Union[NDArray, DataFrame],
             input_min_arr: NDArray,
             input_max_arr: NDArray,
             output_min_arr: NDArray,
             output_max_arr: NDArray,
             iterations: int=10,
-            X_val: NDArray | DataFrame = None,
-            y_val: NDArray | DataFrame = None,
+            X_val: Union[NDArray, DataFrame] = None,
+            y_val: Union[NDArray, DataFrame] = None,
             patience: int = 5,
-            metric: callable = None, # only metric that a lower value is best            
+            metric: callable = None, # only metric that a lower value is best     
+            ClusterAlg: callable=KMeans,       
             **kwargs) -> int:
         if isinstance(X, DataFrame):
             self.feature_names_in_ = X.columns
@@ -64,9 +66,9 @@ class RBFNN(BaseModel):
         X = self._min_max_scale(X, self.input_min_arr, self.input_max_arr)
         y = self._min_max_scale(y, self.output_min_arr, self.output_max_arr)
         
-        kmeans = KMeans(n_clusters=self.n_centers)
-        kmeans.fit(X)
-        self.centers = kmeans.cluster_centers_
+        cluster_alg = ClusterAlg(n_clusters=self.n_centers)
+        cluster_alg.fit(X)
+        self.centers = cluster_alg.cluster_centers_
 
         center_distances = pdist(self.centers, metric='euclidean')
         sigma_init = np.mean(center_distances) / np.sqrt(2 * self.n_centers)
