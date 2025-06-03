@@ -5,6 +5,8 @@ from .sensor import Sensor
 from .cyber_attack import CyberAttack
 from numpy.typing import NDArray
 import warnings
+import keras
+from ..models import reverse_min_max_scale
 
 g = 981 # cm/s^2
 
@@ -27,8 +29,6 @@ class Simulation:
                 tau_u: int=0, 
                 tau_y: int=0,
                 qd: NDArray[np.float64]=np.array([0]),
-                # noise_sigma: float=0.1, 
-                # e_sigma: float=0.005,
                 clip=False,
                 cyberattack_detector=None,
                 ) -> None:
@@ -64,19 +64,40 @@ class Simulation:
     
     def _calc_q(self, t):
         self.e[:, [t-1]] = self.SP_h[:, [t-1]] - self.z[:, [t-1]]
-        # print(e[:, [t-1]])
         # TODO implementacja regulatora dla tau_u
         # TODO implementacja dla szumu, bo może trzeba we wzorze na z użyć y zamiast h
         self.qa += self.pid_a.calc_dCV(self.SP_h[1, :], self.z[1, :], t-1)
         self.qb += self.pid_b.calc_dCV(self.SP_h[0, :], self.z[0, :], t-1)
-        # print(f"{qa=:.4f}")
-        # print(f"{qb=:.4f}")
         self.qa = min(self.qa, self.qa_max)
         self.qa = max(self.qa, 0)
         self.qb = min(self.qb, self.qb_max)
         self.qb = max(self.qb, 0)
         self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
 
+    
+    def _prepare_recurrent_model_inputs(self, k, model, h_idx, recursion_mode=False):
+        inputs = []
+        _, time_steps, num_features = model.input_shape
+        # model w przestrzeni stanu - tylko time_steps = 1
+        if num_features == 6:
+            inputs = self.q[:, [k-1]]
+            if recursion_mode:
+                h_input = self.h_model[:, [k-1]]
+                inputs = np.concatenate((inputs, h_input), axis=0)
+            else:
+                h_input = self.sensor.y[:, [k-1]]
+                inputs = np.concatenate((inputs, h_input), axis=0)
+        else:
+            inputs = np.transpose(self.q[:, k-time_steps:k-1+1])
+            if recursion_mode:
+                h_input = np.reshape(self.h_model[h_idx, k-time_steps:k-1+1], (time_steps, -1))
+                inputs = np.concatenate((inputs, h_input), axis=1)
+            else:
+                h_input = np.reshape(self.sensor.y[h_idx, k-time_steps:k-1+1], (time_steps, -1))
+                inputs = np.concatenate((inputs, h_input), axis=1)
+
+        inputs = np.reshape(np.array(inputs), (1, time_steps, -1))
+        return inputs
     
     def _prepare_model_inputs(self, k, model, recursion_mode=False):
         """
@@ -211,10 +232,14 @@ class Simulation:
         else:
             self.q = kwargs['q']
             self.e = None
+        if model_list is not None:
+            self.h_model = self.process.h[:len(model_list), :].copy()
+        else:
+            self.h_model = self.process.h.copy()
 
-        self.h_model = self.process.h[:len(model_list), :].copy()
-
-        for t in range(max(self.tau_u, self.tau_y, 3), self.n_sampl):
+        for t in range(max(self.tau_u, self.tau_y, 4), self.n_sampl):
+            if t%500 == 0:
+                print(F"krok: {t}/{self.n_sampl}")
             if close_loop:
                 self._calc_q(t)
             if (variability) and (t == time_change):
@@ -229,16 +254,21 @@ class Simulation:
                 self.cyberattack.apply_attack(t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
-            if (model_list is not None) and (t > 6):
+            if (model_list is not None):
                 h_model_t = []
-                for model in model_list:
-                    inputs = self._prepare_model_inputs(t, model, recursion_mode)
-                    with warnings.catch_warnings():
-                        warnings.filterwarnings("ignore", message="X does not have valid feature names")
-                        h_model_t.append(model.predict(inputs)[0])
-                self.h_model[:, [t]] = np.array(h_model_t)
-            else:
-                self.h_model[:, [t]] = self.process.h[:len(model_list), [t]]
+                for i, model in enumerate(model_list):
+                    if isinstance(model, keras.Model):
+                        inputs = self._prepare_recurrent_model_inputs(t, model, i, recursion_mode)
+                        with warnings.catch_warnings():
+                            y_pred_sc = model.predict(inputs, verbose=0)[0][0]
+                            y_pred = reverse_min_max_scale(y_pred_sc, self.process.h_min[i][0], self.process.h_max[i][0])
+                            h_model_t.append(y_pred)
+                    else:
+                        inputs = self._prepare_model_inputs(t, model, recursion_mode)
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings("ignore", message="X does not have valid feature names")
+                            h_model_t.append(model.predict(inputs)[0])
+                self.h_model[:, [t]] = np.reshape(np.array(h_model_t), (-1, 1))
 
             if self.cyberattack_detector is not None:
                 self.cyberattack_detector.detect(self.sensor.y[:len(self.h_model)], self.h_model, t)
