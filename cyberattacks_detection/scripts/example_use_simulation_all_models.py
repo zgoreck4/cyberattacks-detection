@@ -92,7 +92,7 @@ def main_function() -> None:
     Td = 0
 
     # cm
-    step_dur = 50 # 3000/5
+    step_dur = 3000/5
 
     q = None
 
@@ -121,9 +121,9 @@ def main_function() -> None:
                         'lr',
                         'elm',
                         'rbf',
-                        # 'gru',
-                        # 'lstm',
-                        # 'lstm-mlp',
+                        'gru',
+                        'lstm',
+                        'lstm-mlp',
                         )
     model_dict = {'lr':'Regresja liniowa', 'elm': 'Sieć ELM', 'rbf': 'Sieć RBF', 'lstm': 'Sieć LSTM', 'gru': 'Sieć GRU', 'lstm-mlp': 'Sieć LSTM-MLP'}
 
@@ -297,6 +297,17 @@ def main_function() -> None:
                 print(np.shape(attack_signali))
                 print(np.shape(ei))
                 df = pd.DataFrame(np.concatenate((hi, yi, zi, qi, ei, h_modeli, attack_signali.T), axis=0), index= ['x1', 'x2', 'x3', 'x4', 'y1', 'y2', 'y3', 'y4', 'z1', 'z2', 'q_A', 'q_B', 'e1', 'e2', 'x1_pred', 'x2_pred', 'x3_pred', 'x4_pred', 'attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']).T
+                for i in range(1, np.shape(hi)[0]+1):
+                    if residual_calc_func == 'rmse':
+                        df[f'res{i}'] = rmse(df[f'y{i}'], df[f'x{i}_pred'], window_detection)
+                    elif residual_calc_func == 'mae':
+                        df[f'res{i}'] = mae(df[f'y{i}'], df[f'x{i}_pred'], window_detection)
+                    else:
+                        print("Niepoprawna nazwa funkcji do wyliczania wskaźników diagnostycznych")
+                try:
+                    residualsi = df[['res1', 'res2', 'res3', 'res4']].T.values
+                except:
+                    residualsi = []
                 if save_mode:
                     df.to_csv(f"{result_path}/model_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
             else:
