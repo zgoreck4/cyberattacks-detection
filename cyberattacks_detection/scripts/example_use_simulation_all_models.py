@@ -113,8 +113,13 @@ def main_function() -> None:
     h_model = []
     attack_signal = []
 
-    model_type_tuple = ('lr', 'elm', 'rbf')
-    model_dict = {'lr':'Regresja liniowa', 'elm': 'Sieć ELM', 'rbf': 'Sieć RBF'}
+    model_type_tuple = (
+                        'lr',
+                        'elm', 'rbf', 'gru',
+                        'lstm',
+                        'lstm-mlp',
+                        )
+    model_dict = {'lr':'Regresja liniowa', 'elm': 'Sieć ELM', 'rbf': 'Sieć RBF', 'lstm': 'Sieć LSTM', 'gru': 'Sieć GRU', 'lstm-mlp': 'Sieć LSTM-MLP'}
 
     for model_type in model_type_tuple:
 
@@ -144,6 +149,28 @@ def main_function() -> None:
             model3.load_model(f"{model_path}/rbf_x3.npz")
             model4 = RBFNN(None)
             model4.load_model(f"{model_path}/rbf_x4.npz")
+            model_list = [model1, model2, model3, model4]
+        elif model_type == 'lstm':
+                model1 = keras.models.load_model(f"{model_path}/lstm_x1.keras")
+                model2 = keras.models.load_model(f"{model_path}/lstm_x2.keras")
+                model3 = keras.models.load_model(f"{model_path}/lstm_x3.keras")
+                model4 = keras.models.load_model(f"{model_path}/lstm_x4.keras")
+                model_list = [model1, model2, model3, model4]
+        elif model_type == 'gru':
+            model1 = keras.models.load_model(f"{model_path}/gru_x1.keras")
+            model2 = keras.models.load_model(f"{model_path}/gru_x2.keras")
+            model3 = keras.models.load_model(f"{model_path}/gru_x3.keras")
+            model4 = keras.models.load_model(f"{model_path}/gru_x4.keras")
+            model_list = [model1, model2, model3, model4]
+        elif model_type == 'lstm-mlp':
+            # model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1.keras")
+            # model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2.keras")
+            model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1_statespace.keras")
+            model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2_statespace.keras")
+            model3 = keras.models.load_model(f"{model_path}/lstm_mlp_x3.keras")
+            model4 = keras.models.load_model(f"{model_path}/lstm_mlp_x4.keras")
+            # model3 = keras.models.load_model(f"{model_path}/lstm_x3.keras")
+            # model4 = keras.models.load_model(f"{model_path}/lstm_x4.keras")
             model_list = [model1, model2, model3, model4]
         else:
             model_list = None
