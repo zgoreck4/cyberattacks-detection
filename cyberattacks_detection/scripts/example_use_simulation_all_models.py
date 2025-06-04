@@ -9,22 +9,40 @@ from ..detection import CyberattackDetector
 from matplotlib.ticker import MaxNLocator
 import re
 from sklearn import metrics
+import keras
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
-def main_function() -> None:
+seed=32
+rng = np.random.default_rng(seed)
 
+def rmse(y, y_hat, window):
+    """
+    funkcja licząca błąd średniokwadratowy w przesuwnym oknie
+    """
+    se = ((y - y_hat)**2)
+    return se.rolling(window, min_periods=1).mean()**0.5
+def mae(y, y_hat, window):
+    """
+    funkcja licząca średni błąd bezwzględny w przesuwnym oknie
+    """
+    se = abs(y - y_hat)
+    return se.rolling(window, min_periods=1).mean()
+
+def main_function() -> None:
     save_mode = True
     close_loop = True
-    attack_scenario = 2 # 3
+    attack_scenario = 2 # 1 # None
     num_tank = 0
     attack_value = 0.05
     tau_y_ca = 50
     # model_type = 'lr' # None
-    recursion_mode = True
-    window_detection = 110 # 110
-    threshold_method = 'percentile' # 'z-score' # 'percentile'
-    kwargs = {'n_std': 3, 'percentile': 98.5}
+    recursion_mode = True # True
+    detection_from_file = False
+    window_detection = 110
+    residual_calc_func = 'rmse'
+    threshold_method = 'percentile' # 'max' # 'z-score' # 'percentile'
+    kwargs = {'n_std': 3, 'percentile': 99}
 
     variability=False
     # param_name='gamma_a'
@@ -32,14 +50,17 @@ def main_function() -> None:
     param_name = 'a'
     param_value = np.array([1.2, 1.51, 0.927, 0.882])
 
-    active_noise = False # wartość False wyłącza zakłócenia, wartość True włącza
-    noise_sigma = 0.15 # 0.1
+    active_noise = True # wartość False wyłącza zakłócenia, wartość True włącza
+    noise_sigma = 0.15 # 0.15
+    if not active_noise:
+        noise_sigma = 0
     
     if variability==False:
         param_name=None
         param_value=None
 
     threshold_method_dict = {'z-score': f'z-score (z={kwargs["n_std"]})', 'percentile': f'oparta na percent. ({kwargs["percentile"]}%)'}
+    recursion_mode_dict = {True: 'rekurencyjnym', False: 'bez rekurencji'}
 
     tau_u = 0
     tau_y = 0
@@ -156,7 +177,7 @@ def main_function() -> None:
                                         qb0=2000000/3600,
                                         attack_scenario=None)
             
-            cyberattack_detector = CyberattackDetector(window=window_detection)
+            cyberattack_detector = CyberattackDetector(window=window_detection, residual_calc_func=residual_calc_func)
             cyberattack_detector.calc_threshold(h_normal[:len(h_model_normal), :], h_model_normal, method=threshold_method, **kwargs)
 
             # plt.figure(figsize=(8, 9))
