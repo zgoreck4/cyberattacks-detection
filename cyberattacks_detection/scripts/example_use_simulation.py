@@ -12,16 +12,17 @@ def main_function() -> None:
 
     save_mode = False
     close_loop = True
-    attack_scenario = 0 # 3
+    attack_scenario = None # 3
     num_tank = 0
     attack_value = 0.05
     tau_y_ca = 10
-    model_type = 'elm' # None
+    model_type = 'lstm' # None
     recursion_mode = True
     window_detection = 50
+    residual_calc_func = 'rmse'
     threshold_method = 'z-score' # 'percentile'
 
-    variability=True
+    variability=False
     param_name='gamma_a'
     param_value=0.2
 
@@ -101,6 +102,12 @@ def main_function() -> None:
         model4 = RBFNN(None)
         model4.load_model(f"{model_path}/rbf_x4.npz")
         model_list = [model1, model2, model3, model4]
+    elif model_type == 'lstm':
+        model1 = pickle.load(open(f"{model_path}/lstm_x1.sav", 'rb'))
+        model2 = pickle.load(open(f"{model_path}/lstm_x2.sav", 'rb'))
+        model3 = pickle.load(open(f"{model_path}/lstm_x3.sav", 'rb'))
+        model4 = pickle.load(open(f"{model_path}/lstm_x4.sav", 'rb'))
+        model_list = [model1, model2, model3, model4]
     else:
         model_list = None
 
@@ -135,7 +142,7 @@ def main_function() -> None:
                                     qb0=2000000/3600,
                                     attack_scenario=None)
         
-        cyberattack_detector = CyberattackDetector(window=window_detection)
+        cyberattack_detector = CyberattackDetector(window=window_detection, residual_calc_func=residual_calc_func)
         cyberattack_detector.calc_threshold(h[:len(h_model), :], h_model, method=threshold_method)
 
         plt.figure(figsize=(8, 9))
