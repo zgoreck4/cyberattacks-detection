@@ -104,6 +104,8 @@ def main_function() -> None:
     q = None
 
     model_path = Path(__file__).parent.parent / "saved_models"
+    result_path = Path(__file__).parent.parent / "results/v2"
+    plot_path = Path(__file__).parent.parent / "plots/v3/good_param"
 
     h = []
     y = []
@@ -112,6 +114,9 @@ def main_function() -> None:
     e = []
     h_model = []
     attack_signal = []
+    residuals = []
+    residualsi = []
+    threshold = []
 
     model_type_tuple = (
                         'lr',
@@ -119,66 +124,92 @@ def main_function() -> None:
                         'lstm',
                         'lstm-mlp',
                         )
+    model_normal_file_names = (f"model_lr_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                               , f"model_elm_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_rbf_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_gru_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_lstm_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_lstm-mlp_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+                                )
+    model_file_names = (f"model_lr_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        , f"model_elm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        , f"model_rbf_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        , f"model_gru_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        , f"model_lstm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        , f"model_lstm-mlp_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                        )
+    # model_file_names = (f"model_lr_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     , f"model_elm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     , f"model_rbf_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     , f"model_gru_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     , f"model_lstm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     , f"model_lstm-mlp_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window110_met_percentile_nstd3_perc98.5_noise_{noise_sigma}.csv"
+    #                     )
+    # model_normal_file_names = (None, None, None, None, None, None)
+    # model_file_names = (None, None, None, None, None, None)
     model_dict = {'lr':'Regresja liniowa', 'elm': 'Sieć ELM', 'rbf': 'Sieć RBF', 'lstm': 'Sieć LSTM', 'gru': 'Sieć GRU', 'lstm-mlp': 'Sieć LSTM-MLP'}
 
-    for model_type in model_type_tuple:
+    for model_type, model_normal_file_name, model_file_name in zip(model_type_tuple, model_normal_file_names, model_file_names):
+        print(model_type)
 
-        if model_type == 'lr':
-            model1 = pickle.load(open(f"{model_path}/lr_x1.sav", 'rb'))
-            model2 = pickle.load(open(f"{model_path}/lr_x2.sav", 'rb'))
-            model3 = pickle.load(open(f"{model_path}/lr_x3.sav", 'rb'))
-            model4 = pickle.load(open(f"{model_path}/lr_x4.sav", 'rb'))
-            model_list = [model1, model2, model3, model4]
-        elif model_type == 'elm':
-            model1 = ELM(0, 0)
-            model1.load_model(f"{model_path}/elm_x1.npz")
-            model2 = ELM(0, 0)
-            model2.load_model(f"{model_path}/elm_x2.npz")
-            model3 = ELM(0, 0)
-            model3.load_model(f"{model_path}/elm_x3.npz")
-            model4 = ELM(0, 0)
-            model4.load_model(f"{model_path}/elm_x4.npz")
-            model_list = [model1, model2, model3, model4]
-        elif model_type == 'rbf':
-            model1 = RBFNN(None)
-            # model1.load_model(f"{model_path}/rbf_x1.npz")
-            model1.load_model(f"{model_path}/rbf_x1_v0.npz")
-            model2 = RBFNN(None)
-            model2.load_model(f"{model_path}/rbf_x2.npz")
-            model3 = RBFNN(None)
-            model3.load_model(f"{model_path}/rbf_x3.npz")
-            model4 = RBFNN(None)
-            model4.load_model(f"{model_path}/rbf_x4.npz")
-            model_list = [model1, model2, model3, model4]
-        elif model_type == 'lstm':
+        if (attack_scenario is not None and model_normal_file_name is None) or (model_file_name is None):
+
+            if model_type == 'lr':
+                model1 = pickle.load(open(f"{model_path}/lr_x1.sav", 'rb'))
+                model2 = pickle.load(open(f"{model_path}/lr_x2.sav", 'rb'))
+                model3 = pickle.load(open(f"{model_path}/lr_x3.sav", 'rb'))
+                model4 = pickle.load(open(f"{model_path}/lr_x4.sav", 'rb'))
+                model_list = [model1, model2, model3, model4]
+            elif model_type == 'elm':
+                model1 = ELM(0, 0)
+                model1.load_model(f"{model_path}/elm_x1.npz")
+                model2 = ELM(0, 0)
+                model2.load_model(f"{model_path}/elm_x2.npz")
+                model3 = ELM(0, 0)
+                model3.load_model(f"{model_path}/elm_x3.npz")
+                model4 = ELM(0, 0)
+                model4.load_model(f"{model_path}/elm_x4.npz")
+                model_list = [model1, model2, model3, model4]
+            elif model_type == 'rbf':
+                model1 = RBFNN(None)
+                # model1.load_model(f"{model_path}/rbf_x1.npz")
+                model1.load_model(f"{model_path}/rbf_x1_v0.npz")
+                model2 = RBFNN(None)
+                model2.load_model(f"{model_path}/rbf_x2.npz")
+                model3 = RBFNN(None)
+                model3.load_model(f"{model_path}/rbf_x3.npz")
+                model4 = RBFNN(None)
+                model4.load_model(f"{model_path}/rbf_x4.npz")
+                model_list = [model1, model2, model3, model4]
+            elif model_type == 'lstm':
                 model1 = keras.models.load_model(f"{model_path}/lstm_x1.keras")
                 model2 = keras.models.load_model(f"{model_path}/lstm_x2.keras")
                 model3 = keras.models.load_model(f"{model_path}/lstm_x3.keras")
                 model4 = keras.models.load_model(f"{model_path}/lstm_x4.keras")
                 model_list = [model1, model2, model3, model4]
-        elif model_type == 'gru':
-            model1 = keras.models.load_model(f"{model_path}/gru_x1.keras")
-            model2 = keras.models.load_model(f"{model_path}/gru_x2.keras")
-            model3 = keras.models.load_model(f"{model_path}/gru_x3.keras")
-            model4 = keras.models.load_model(f"{model_path}/gru_x4.keras")
-            model_list = [model1, model2, model3, model4]
-        elif model_type == 'lstm-mlp':
-            # model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1.keras")
-            # model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2.keras")
-            model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1_statespace.keras")
-            model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2_statespace.keras")
-            model3 = keras.models.load_model(f"{model_path}/lstm_mlp_x3.keras")
-            model4 = keras.models.load_model(f"{model_path}/lstm_mlp_x4.keras")
-            # model3 = keras.models.load_model(f"{model_path}/lstm_x3.keras")
-            # model4 = keras.models.load_model(f"{model_path}/lstm_x4.keras")
-            model_list = [model1, model2, model3, model4]
-        else:
-            model_list = None
+            elif model_type == 'gru':
+                model1 = keras.models.load_model(f"{model_path}/gru_x1.keras")
+                model2 = keras.models.load_model(f"{model_path}/gru_x2.keras")
+                model3 = keras.models.load_model(f"{model_path}/gru_x3.keras")
+                model4 = keras.models.load_model(f"{model_path}/gru_x4.keras")
+                model_list = [model1, model2, model3, model4]
+            elif model_type == 'lstm-mlp':
+                # model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1.keras")
+                # model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2.keras")
+                model1 = keras.models.load_model(f"{model_path}/lstm_mlp_x1_statespace.keras")
+                model2 = keras.models.load_model(f"{model_path}/lstm_mlp_x2_statespace.keras")
+                model3 = keras.models.load_model(f"{model_path}/lstm_mlp_x3.keras")
+                model4 = keras.models.load_model(f"{model_path}/lstm_mlp_x4.keras")
+                # model3 = keras.models.load_model(f"{model_path}/lstm_x3.keras")
+                # model4 = keras.models.load_model(f"{model_path}/lstm_x4.keras")
+                model_list = [model1, model2, model3, model4]
+            else:
+                model_list = None
 
         # należy ustawić próg w detektorze na podstawie normalnej pracy
-        if ((attack_scenario is not None) or (variability == True)) and model_list is not None:
+        if ((attack_scenario is not None) or (variability == True)):
             SP_h1 = np.array([h0[0], h0[0], 50, 50, 80, 80, 100, 100, 90, 90, 40])
-            SP_h2 = np.array([h0[1], 55,   55, 70, 70, 95, 95, 105, 105, 60, 60])
+            SP_h2 = np.array([h0[1], 55,    55, 70, 70, 95, 95, 105, 105, 60, 60])
             # SP_h1 = np.array([h0[0], h0[0], 80, 80, 100, 100, 90])
             # SP_h2 = np.array([h0[1], 55,   55, 95, 95, 105, 105])
             SP_h = np.vstack((SP_h1, SP_h2))
@@ -189,23 +220,32 @@ def main_function() -> None:
             T = n_sampl // T_s # TODO: sprawdzić działanie jeżeli n_sampl nie dzieli się całkowicie przez T_s
             time = np.arange(0, T, T_s)
             T = max(time)
-            qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
-            simulation_normal = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
-                                    S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
-                                    # , noise_sigma, e_sigma
-                                    )
-            h_normal, _, _, _, _, h_model_normal, _ = simulation_normal.run(h0,
-                                        close_loop,
-                                        model_list=model_list,
-                                        recursion_mode=recursion_mode,
-                                        SP_h=SP_h,
-                                        q=q,
-                                        qa0=1630000/3600,
-                                        qb0=2000000/3600,
-                                        attack_scenario=None)
+            qd = np.round(rng.standard_normal(size=(4,n_sampl))*noise_sigma*active_noise, 4)
+            if model_normal_file_name is None:
+                simulation_normal = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
+                                        S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd
+                                        # , noise_sigma, e_sigma
+                                        )
+                h_normal, _, _, _, _, h_model_normal, _ = simulation_normal.run(h0,
+                                            close_loop,
+                                            model_list=model_list,
+                                            recursion_mode=recursion_mode,
+                                            SP_h=SP_h,
+                                            q=q,
+                                            qa0=1630000/3600,
+                                            qb0=2000000/3600,
+                                            attack_scenario=None)                 
+                df = pd.DataFrame(np.concatenate((h_normal, h_model_normal), axis=0), index= ['x1', 'x2', 'x3', 'x4', 'x1_pred', 'x2_pred', 'x3_pred', 'x4_pred']).T
+                df.to_csv(f"{result_path}/model_{model_type}_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
+                      
+            else:
+                df = pd.read_csv(f"{result_path}/{model_normal_file_name}", sep=';')
+                h_normal = df[['x1', 'x2', 'x3', 'x4']].T.values
+                h_model_normal = df[['x1_pred', 'x2_pred', 'x3_pred', 'x4_pred']].T.values
             
             cyberattack_detector = CyberattackDetector(window=window_detection, residual_calc_func=residual_calc_func)
             cyberattack_detector.calc_threshold(h_normal[:len(h_model_normal), :], h_model_normal, method=threshold_method, **kwargs)
+            thresholdi = np.array(cyberattack_detector.threshold)
 
             # plt.figure(figsize=(8, 9))
             # plt.title("Poziom rzeczywisty i przewidywany w stanie normalnym")
@@ -243,30 +283,57 @@ def main_function() -> None:
         attack_time = n_sampl//2 # n_sampl//3 * 2
         time_change=n_sampl//4
 
-        qd = np.round(np.random.randn(4,n_sampl)*noise_sigma*active_noise, 4)
+        qd = np.round(rng.standard_normal(size=(4,n_sampl))*noise_sigma*active_noise, 4)
 
-        simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
-                                S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd, cyberattack_detector=cyberattack_detector
-                                # , noise_sigma, e_sigma
-                                )
+        if model_file_name is None:
 
-        hi, yi, zi, qi, ei, h_modeli, attack_signali = simulation.run(h0,
-                                    close_loop,
-                                    model_list=model_list,
-                                    recursion_mode=recursion_mode,
-                                    SP_h=SP_h,
-                                    q=q,
-                                    qa0=1630000/3600,
-                                    qb0=2000000/3600,
-                                    attack_scenario=attack_scenario,
-                                    num_tank=num_tank,
-                                    attack_time=attack_time,
-                                    attack_value=attack_value,
-                                    tau_y_ca=tau_y_ca,
-                                    variability=variability,
-                                    param_name=param_name,
-                                    param_value=param_value,
-                                    time_change=time_change)
+            simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
+                                    S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd, cyberattack_detector=cyberattack_detector
+                                    # , noise_sigma, e_sigma
+                                    )
+
+            hi, yi, zi, qi, ei, h_modeli, attack_signali = simulation.run(h0,
+                                        close_loop,
+                                        model_list=model_list,
+                                        recursion_mode=recursion_mode,
+                                        SP_h=SP_h,
+                                        q=q,
+                                        qa0=1630000/3600,
+                                        qb0=2000000/3600,
+                                        attack_scenario=attack_scenario,
+                                        num_tank=num_tank,
+                                        attack_time=attack_time,
+                                        attack_value=attack_value,
+                                        tau_y_ca=tau_y_ca,
+                                        variability=variability,
+                                        param_name=param_name,
+                                        param_value=param_value,
+                                        time_change=time_change)
+            print(np.shape(hi))
+            print(np.shape(attack_signali))
+            print(np.shape(ei))
+            df = pd.DataFrame(np.concatenate((hi, yi, zi, qi, ei, h_modeli, attack_signali.T), axis=0), index= ['x1', 'x2', 'x3', 'x4', 'y1', 'y2', 'y3', 'y4', 'z1', 'z2', 'q_A', 'q_B', 'e1', 'e2', 'x1_pred', 'x2_pred', 'x3_pred', 'x4_pred', 'attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']).T
+            df.to_csv(f"{result_path}/model_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
+        else:
+            df = pd.read_csv(f"{result_path}/{model_file_name}", sep=';')
+            hi = df[['x1', 'x2', 'x3', 'x4']].T.values
+            yi = df[['y1', 'y2', 'y3', 'y4']].T.values
+            zi = df[['z1', 'z2']].T.values
+            qi = df[['q_A', 'q_B']].T.values
+            ei = df[['e1', 'e2']].values
+            h_modeli = df[['x1_pred', 'x2_pred', 'x3_pred', 'x4_pred']].T.values
+            if detection_from_file:
+                attack_signali = df[['attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']].values
+                residualsi = []
+            else:
+                for i in range(1, np.shape(hi)[0]+1):
+                    df[f'res{i}'] = rmse(df[f'y{i}'], df[f'x{i}_pred'], window_detection)
+                    df[f'res{i}'] = mae(df[f'y{i}'], df[f'x{i}_pred'], window_detection)
+                df[['attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']] = df[['res1', 'res2', 'res3', 'res4']] > cyberattack_detector.threshold
+                attack_signali = df[['attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']].values
+                residualsi = df[['res1', 'res2', 'res3', 'res4']].T.values
+                df.to_csv(f"{result_path}/model_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
+        
         h.append(hi)
         y.append(yi)
         z.append(zi)
@@ -275,6 +342,8 @@ def main_function() -> None:
         y.append(yi)
         h_model.append(h_modeli)
         attack_signal.append(attack_signali)
+        residuals.append(residualsi)
+        threshold.append(thresholdi)
 
     # Set global font sizes for different elements
     plt.rcParams.update({
