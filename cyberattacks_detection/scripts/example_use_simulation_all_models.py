@@ -347,8 +347,8 @@ def main_function() -> None:
 
     # Set global font sizes for different elements
     plt.rcParams.update({
-        'axes.titlesize': 11,    # Titles of subplots
-        'axes.labelsize': 9,     # Labels for axes
+        'axes.titlesize': 9,    # Titles of subplots
+        'axes.labelsize': 8,     # Labels for axes
         'axes.prop_cycle': cycler.cycler(
             color=['tab:blue',
                    'tab:orange',
@@ -359,15 +359,11 @@ def main_function() -> None:
                    'tab:pink',
                    'tab:olive']
             ),
-        'xtick.labelsize': 9,    # X-axis tick labels
-        'ytick.labelsize': 9,    # Y-axis tick labels
+        'xtick.labelsize': 8,    # X-axis tick labels
+        'ytick.labelsize': 8,    # Y-axis tick labels
         'legend.fontsize': 7,     # Legend font size
-        'figure.titlesize': 12    # Overall figure title size (if used)
+        'figure.titlesize': 10    # Overall figure title size (if used)
     })
-
-    plot_path = Path(__file__).parent.parent / "plots/art"
-    
-    result_path = Path(__file__).parent.parent / "results"
 
     attack_binary = np.hstack((np.zeros(attack_time+1), np.ones(T-attack_time)))
     change_binary = np.hstack((np.zeros(time_change+1), np.ones(T-time_change)))
@@ -417,7 +413,7 @@ def main_function() -> None:
         # plt.subplots_adjust(hspace=0.5)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.png",
+            plt.savefig(f"{plot_path}/SP_PV_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}_variability_{param_name}{param_value}.png",
                         bbox_inches ='tight')
         plt.show()
 
@@ -430,9 +426,10 @@ def main_function() -> None:
         result_df = pd.DataFrame(columns=['Opóźnienie [s]', 'Recall', 'FPR'])
 
         for model_type, attack_signal_i in zip(model_type_tuple, attack_signal):
+            attack_signal_i_1tank = attack_signal_i[:, num_tank]
             attack_res = pd.DataFrame()
             attack_res['true'] = attack_binary
-            attack_res['pred'] = attack_signal_i[:, num_tank]
+            attack_res['pred'] = attack_signal_i_1tank
             attack_res.dropna(inplace=True)
             attack_res = attack_res.astype(int)
 
@@ -443,7 +440,7 @@ def main_function() -> None:
             indices = np.where((attack_binary[:-1] == 0) & (attack_binary[1:] == 1))[0]
             attack_time = indices[0]
             print(f"{attack_time=}")
-            indices = np.where((attack_signal_i[:-1] == 0) & (attack_signal_i[1:] == 1))[0]
+            indices = np.where((attack_signal_i_1tank[:-1] == 0) & (attack_signal_i_1tank[1:] == 1))[0]
             print(indices)
             indices = indices[indices>attack_time]
             print(indices)
@@ -457,41 +454,126 @@ def main_function() -> None:
             result_df.loc[model_type.upper()] = [attack_time_delay, round(recall, 4), round(fpr, 4)]
             result_df.index.name = 'Model'
 
-        result_df.to_excel(f"{result_path}/result_df_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.xlsx")
+        result_df.to_excel(f"{result_path}/result_df_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_variability_{param_name}{param_value}.xlsx")
         print(result_df)
 
-        fig2=plt.figure(figsize=(6, 6))
-        # fig2.suptitle(f'Poziom wody w 2 zbiornikach {title_part} w trybie {title_recursion}')
-        fig2.suptitle(f'Cyberatak - scenariusz {attack_scenario+1}.\nOkno czasowe o dł. {window_detection}')
+        # wykres dla różnych modeli dla atakowanego zbiornika
+
+        fig2 = plt.figure(figsize=(6, 10))
+
+        if attack_scenario is not None:
+            fig2.suptitle(f'Cyberatak na zbiornik {num_tank+1}. - scenariusz {attack_scenario+1}.\nPredykcja w trybie {recursion_mode_dict[recursion_mode]}.\nOkno czasowe o dł. {window_detection}')
+        else:
+            fig2.suptitle(f'Zmiana wartości {param_name} na {param_value}')
+
+        legend_handles = []  # To store handles for figlegend
+        legend_labels = []  # To store labels for figlegend
+
         for i, (zi, hi, h_modeli, model_type, attack_signali) in enumerate(zip(z, h, h_model, model_type_tuple, attack_signal)):
-            ax1 = plt.subplot(3, 1, i+1)
-            ax1.plot(time, zi[num_tank], label=f'pomiar $h_{num_tank+1}$')
-            ax1.plot(time, hi[num_tank], linestyle='-.', label=f'rzecz. $h_{num_tank+1}$')
-            ax1.plot(time, h_modeli[num_tank], linestyle='--', label=rf'$\hat{{h_{num_tank+1}}}$')
+            ax1 = plt.subplot(len(model_type_tuple), 1, i + 1)
+            
+            line1, = ax1.plot(time, zi[num_tank], label=f'pomiar $h_{num_tank+1}$')
+            line2, = ax1.plot(time, hi[num_tank], linestyle='-.', label=f'rzecz. $h_{num_tank+1}$')
+            line3, = ax1.plot(time, h_modeli[num_tank], linestyle='--', label=rf'$\hat{{h_{num_tank+1}}}$')
+
             ax1.set_xlabel('t [s]')
             ax1.set_ylabel(f'$h_{num_tank+1} [cm]$')
             ax1.set_title(f"{model_dict[model_type]}")
             ax1.grid()
-            # Add secondary y-axis to the first subplot
-            ax1_secondary = ax1.twinx()
-            ax1_secondary.fill_between(time, attack_signali[:, num_tank].astype(float), color='r', alpha=0.2, label=f'wykryty cyberatak')
-            if attack_scenario is not None:
-                ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
-            if variability==True:
-                ax1_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
-            ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
-            # ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
-            # set y-axis to only show integer values
-            ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
-            ax1_secondary.legend(loc='best', bbox_to_anchor=(0.8, 0.1, 0.2, 0.8))
-            ax1.legend(loc='best', bbox_to_anchor=(0, 0, 0.2, 1.0))
 
-        plt.subplots_adjust(hspace=0.6)
+            ax1_secondary = ax1.twinx()
+            fill1 = ax1_secondary.fill_between(time, attack_signali[:, num_tank].astype(float), color='r', alpha=0.2, label=f'wykryty cyberatak')
+
+            if attack_scenario is not None:
+                line4, = ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', label='cyberatak')
+            else:
+                line4 = None  # Placeholder to avoid errors
+
+            if variability:
+                line5, = ax1_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
+            else:
+                line5 = None  # Placeholder
+
+            ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
+            ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+            # Collect legend handles & labels only from the first subplot
+            if i == 0:
+                legend_handles.extend([line1, line2, line3, fill1, line4, line5])
+                legend_labels.extend([h.get_label() for h in legend_handles if h is not None])  # Filter out None values
+
+        # Add a single figure-wide legend
+        plt.figlegend(legend_handles, legend_labels, loc='upper right', bbox_to_anchor=(1.0, 1.0))
+        plt.subplots_adjust(hspace=1.1)
+        plt.subplots_adjust(top=0.85)
 
         if save_mode:
-            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{active_noise}_variability_{param_name}{param_value}.png",
+            plt.savefig(f"{plot_path}/h_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}_variability_{param_name}{param_value}.png",
                         bbox_inches ='tight')
         plt.show()
+
+        try:
+            # wykres residuów
+            if len(residuals) != 0:
+
+                fig2 = plt.figure(figsize=(6, 10))
+                fig2.suptitle(f'Cyberatak - scenariusz {attack_scenario+1}.\nOkno czasowe o dł. {window_detection}')
+
+                legend_handles = []  # To store handles for figlegend
+                legend_labels = []  # To store labels for figlegend
+
+                for i, (residual_1model, model_type, attack_signali, thresholdi) in enumerate(zip(residuals, model_type_tuple, attack_signal, threshold)):
+                    print(thresholdi)
+                    ax1 = plt.subplot(len(model_type_tuple), 1, i + 1)
+                    
+                    print(f"num_tank={num_tank}")
+                    print(f"residual_1model={residual_1model}")
+                    print(f"np.shape(residual_1model)={np.shape(residual_1model)}")
+                    # print(f"len(residual_1model) = {len(residual_1model)}")
+                    # print(f"np.shape(residual_1model[0]) = {np.shape(residual_1model[0])}")
+
+                    line1, = ax1.plot(time, residual_1model[num_tank, :], label=f'${residual_calc_func}_{num_tank+1}$')
+
+                    line2 = plt.axhline(y=thresholdi[num_tank], color='tab:gray', linestyle=(5, (10, 3)), label=f'h_max{i+1}')
+
+                    ax1.set_ylabel(f'${residual_calc_func}_{num_tank+1} [cm]$')
+                    ax1.set_title(f"{model_dict[model_type]}")
+                    ax1.grid()
+
+                    ax1_secondary = ax1.twinx()
+                    fill1 = ax1_secondary.fill_between(time, attack_signali[:, num_tank].astype(float), color='r', alpha=0.2, label=f'wykryty cyberatak')
+
+                    if attack_scenario is not None:
+                        line4, = ax1_secondary.plot(time, attack_binary, color='red', linestyle='--', linewidth=1, label='cyberatak')
+                    else:
+                        line4 = None  # Placeholder to avoid errors
+
+                    if variability:
+                        line5, = ax1_secondary.plot(time, change_binary, color='tab:pink', linestyle='--', label='zmiana param')
+                    else:
+                        line5 = None  # Placeholder
+
+                    ax1_secondary.set_ylabel('Sygnał binarny\ncyberataku')
+                    ax1_secondary.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+                    # Collect legend handles & labels only from the first subplot
+                    if i == 0:
+                        legend_handles.extend([line1, line2, fill1, line4, line5])
+                        legend_labels.extend([h.get_label() for h in legend_handles if h is not None])  # Filter out None values
+
+                ax1.set_xlabel('t [s]')
+                # Add a single figure-wide legend
+                plt.figlegend(legend_handles, legend_labels, loc='upper right', bbox_to_anchor=(1.0, 1.0))
+                plt.subplots_adjust(hspace=1.1)
+                plt.subplots_adjust(top=0.85)
+
+                if save_mode:
+                    plt.savefig(f"{plot_path}/residuals_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}_variability_{param_name}{param_value}.png",
+                                bbox_inches ='tight')
+                plt.show()
+        except:
+            print("Nie udało się wygenerować wykresu residuów")
+
 
 if __name__ == "__main__":
     main_function()
