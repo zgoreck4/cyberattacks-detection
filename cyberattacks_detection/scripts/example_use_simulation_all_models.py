@@ -32,54 +32,52 @@ def mae(y, y_hat, window):
     se = abs(y - y_hat)
     return se.rolling(window, min_periods=1).mean()
 
-def main_function() -> None:
-    save_mode = False
-    close_loop = True
-    attack_value = 0.05
-    tau_y_ca = 50
-    detection_from_file = False
-    residual_calc_func = 'rmse'
-
-    variability=False
-    param_name = 'a' # 'gamma_a'
-    # param_value=0.2 # z 0.3 na 0.2
-    param_value = np.array([1.2, 1.51, 0.927, 0.882])
-    
-    active_noise = True # wartość False wyłącza zakłócenia, wartość True włącza
-    noise_sigma = 0.15
+def main_function(
+    save_mode: bool = False,
+    close_loop: bool = True,
+    simulate_from_file: bool = True,
+    detection_from_file: bool = True,
+    attack_value: float = 0.05,
+    tau_y_ca: int = 50,
+    active_noise: bool = True,
+    noise_sigma: float = 0.15,
+    residual_calc_func: str = 'rmse',
+    model_type_tuple=(
+        'lr',
+        'elm',
+        'rbf',
+        'gru',
+        'lstm',
+        'lstm-mlp',
+    ),
+    threshold_method_list=[('percentile', 99)],
+    recursion_mode_list=[True],
+    window_detection_list=[20],
+    num_tank_list=[0],
+    attack_scenario_list=[0, 1, 2, 3],
+    variability: bool = False,
+    param_name: str = 'a',
+    param_value=np.array([1.2, 1.51, 0.927, 0.882])
+) -> None:
     if not active_noise:
         noise_sigma = 0
 
-    if variability==False:
-        param_name=None
-        param_value=None
+    if not variability:
+        param_name = None
+        param_value = None
 
     recursion_mode_dict = {True: 'rekurencyjnym', False: 'bez rekurencji'}
 
     tau_u = 0
     tau_y = 0
-    # h0 = [65, 66, 65, 66]
-    # dla gamma_a = 0.3, gamma_b = 0.4
+
     h0 = [65.37515073890378, 64.98201463176996, 65.90206440432354, 65.8157923349714]
-    # h0 = [60.88756594079625, 68.99253334710369, 0, 0]
-    # dla gamma = 0.8
-    # h0 = [66.54149974283987, 63.981536657570146, 7.322451600480413, 5.372717741630307]
-    # dla gamma_a = 0.7, gamma_b = 0.6
-    # h0 = [86.33849517038516, 49.20411218062061, 29.28980640192163, 12.088614918668185]
-    # h0 = [12.4, 1.8, 12.7, 1.4]
-    # h0 = [12.6, 4.8, 13, 4.9]
 
-    h_max = [[136],
-            [136],
-            [130],
-            [130]]
-    h_min = [[20],
-            [20],
-            [20],
-            [20]]
+    h_max = [[136], [136], [130], [130]]
+    h_min = [[20], [20], [20], [20]]
 
-    qa_max = 3260000/3600
-    qb_max = 4000000/3600
+    qa_max = 3260000 / 3600
+    qb_max = 4000000 / 3600
     q_min = 0
     gamma_a = 0.3
     gamma_b = 0.4
@@ -91,8 +89,7 @@ def main_function() -> None:
     Ti = 15
     Td = 0
 
-    # cm
-    step_dur = 3000/5
+    step_dur = 3000 / 5
 
     q = None
 
@@ -101,37 +98,53 @@ def main_function() -> None:
     SP_h_normal = np.vstack((SP_h1_normal, SP_h2_normal))
     SP_h_normal = np.repeat(SP_h_normal, step_dur, axis=1)
 
-    n_sampl_normal = np.shape(SP_h_normal)[1]
+    n_sampl_normal = SP_h_normal.shape[1]
 
     SP_h1 = np.array([h0[0], h0[0], 70, 70, 95, 95, 90])
-    SP_h2 = np.array([h0[1], 50,   50, 90, 90, 105, 105])
+    SP_h2 = np.array([h0[1], 50, 50, 90, 90, 105, 105])
     SP_h = np.vstack((SP_h1, SP_h2))
     SP_h = np.repeat(SP_h, step_dur, axis=1)
-    n_sampl = np.shape(SP_h)[1]
 
-    # zdefiniowanie przed pętlą, aby dla każdego eksperymentu zakłócenia były identyczne
-    qd = np.round(rng.standard_normal(size=(4,n_sampl))*noise_sigma*active_noise, 4)
-    qd_normal = np.round(rng.standard_normal(size=(4,n_sampl_normal))*noise_sigma*active_noise, 4)
+    n_sampl = SP_h.shape[1]
+
+    qd = np.round(rng.standard_normal(size=(4, n_sampl)) * noise_sigma * active_noise, 4)
+    qd_normal = np.round(rng.standard_normal(size=(4, n_sampl_normal)) * noise_sigma * active_noise, 4)
 
     model_path = Path(__file__).parent.parent / "saved_models"
     result_path = Path(__file__).parent.parent / "results/v3"
     plot_path = Path(__file__).parent.parent / "plots/v4"
 
-    model_type_tuple = (
-                        'lr',
-                        'elm',
-                        'rbf',
-                        'gru',
-                        'lstm',
-                        'lstm-mlp',
-                        )
-    model_dict = {'lr':'Regresja liniowa', 'elm': 'Sieć ELM', 'rbf': 'Sieć RBF', 'lstm': 'Sieć LSTM', 'gru': 'Sieć GRU', 'lstm-mlp': 'Sieć LSTM-MLP'}
+    model_dict = {
+        'lr': 'Regresja liniowa',
+        'elm': 'Sieć ELM',
+        'rbf': 'Sieć RBF',
+        'lstm': 'Sieć LSTM',
+        'gru': 'Sieć GRU',
+        'lstm-mlp': 'Sieć LSTM-MLP'
+    }
 
-    threshold_method_list = [('percentile', 99)] # 'max' # 'z-score' # 'percentile'
-    recursion_mode_list = [True] # [True, False]
-    window_detection_list = [20] # [20, 110] # 110
-    num_tank_list = [0] # [0, 1]
-    attack_scenario_list = [0] # [0, 1, 2, 3]
+    # Your logic continues from here...
+    print("Function executed with:")
+    print(f"  save_mode = {save_mode}")
+    print(f"  close_loop = {close_loop}")
+    print(f"  attack_value = {attack_value}")
+    print(f"  tau_y_ca = {tau_y_ca}")
+    print(f"  simulate_from_file = {simulate_from_file}")
+    print(f"  detection_from_file = {detection_from_file}")
+    print(f"  residual_calc_func = '{residual_calc_func}'")
+    print(f"  variability = {variability}")
+    print(f"  param_name = {param_name}")
+    print(f"  param_value = {param_value}")
+    print(f"  active_noise = {active_noise}")
+    print(f"  noise_sigma = {noise_sigma}")
+    print(f"  model_type_tuple = {model_type_tuple}")
+    print(f"  threshold_method_list = {threshold_method_list}")
+    print(f"  recursion_mode_list = {recursion_mode_list}")
+    print(f"  window_detection_list = {window_detection_list}")
+    print(f"  num_tank_list = {num_tank_list}")
+    print(f"  attack_scenario_list = {attack_scenario_list}")
+
+    
     kwargs = {'n_std': 3, 'percentile': 99}
 
     for window_detection, num_tank, recursion_mode, (threshold_method, value), attack_scenario in tqdm(product(window_detection_list, num_tank_list, recursion_mode_list, threshold_method_list, attack_scenario_list)):
@@ -165,15 +178,17 @@ def main_function() -> None:
                                     , f"model_lstm_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
                                     , f"model_lstm-mlp_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
                                     )
-        # model_file_names = (f"model_lr_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     , f"model_elm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     , f"model_rbf_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     , f"model_gru_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     , f"model_lstm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     , f"model_lstm-mlp_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-        #                     )
         # model_normal_file_names = (None, None, None, None, None, None)
-        model_file_names = (None, None, None, None, None, None)
+        if simulate_from_file:
+            model_file_names = (f"model_lr_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_elm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_rbf_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_gru_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_lstm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                , f"model_lstm-mlp_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+                                )
+        else:
+            model_file_names = (None, None, None, None, None, None)
 
         for model_type, model_normal_file_name, model_file_name in zip(model_type_tuple, model_normal_file_names, model_file_names):
             print(model_type)
