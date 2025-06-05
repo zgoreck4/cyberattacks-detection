@@ -36,7 +36,8 @@ def main_function(
     save_mode: bool = False,
     close_loop: bool = True,
     simulate_from_file: bool = True,
-    detection_from_file: bool = True,
+    detection_from_file: bool = True, # jeżeli simulate_from_file=False to to też jest False
+    normal_trajectories_from_file: bool = True,
     attack_value: float = 0.05,
     tau_y_ca: int = 50,
     active_noise: bool = True,
@@ -65,6 +66,10 @@ def main_function(
     if not variability:
         param_name = None
         param_value = None
+    
+    if (not simulate_from_file) and (detection_from_file):
+        print("Przy symulacji cyberatku detekcja cyberataku nie może być z pliku z danymi - będzie podczas symulacji")
+        detection_from_file = False
 
     recursion_mode_dict = {True: 'rekurencyjnym', False: 'bez rekurencji'}
 
@@ -171,27 +176,17 @@ def main_function(
         residualsi = []
         threshold = []
 
-        model_normal_file_names = (f"model_lr_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                   , f"model_elm_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                    , f"model_rbf_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                    , f"model_gru_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                    , f"model_lstm_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                    , f"model_lstm-mlp_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
-                                    )
-        # model_normal_file_names = (None, None, None, None, None, None)
-        if simulate_from_file:
-            model_file_names = (f"model_lr_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                , f"model_elm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                , f"model_rbf_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                , f"model_gru_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                , f"model_lstm_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                , f"model_lstm-mlp_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
-                                )
-        else:
-            model_file_names = (None, None, None, None, None, None)
-
-        for model_type, model_normal_file_name, model_file_name in zip(model_type_tuple, model_normal_file_names, model_file_names):
+        for model_type in model_type_tuple:
             print(model_type)
+
+            if simulate_from_file or detection_from_file:
+                model_file_name = f"model_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv"
+            else:
+                model_file_name = None
+            if normal_trajectories_from_file:
+                model_normal_file_name = f"model_{model_type}_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv"
+            else:
+                model_normal_file_name = None
 
             if (attack_scenario is not None and model_normal_file_name is None) or (model_file_name is None):
 
@@ -249,6 +244,7 @@ def main_function(
                 time = np.arange(0, T, T_s)
                 T = max(time)
                 if model_normal_file_name is None:
+                    print("SYMULACJA STANU NORMALNEGO")
                     simulation_normal = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                                             S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd_normal
                                             )
@@ -266,6 +262,7 @@ def main_function(
                         df.to_csv(f"{result_path}/model_{model_type}_normal_rec_{recursion_mode}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
                         
                 else:
+                    print(f"WCZYTYWANIE DANYCH Z PLIKÓW Z PRZEBIEGAMI ZMIENNYCH ZE STANU NORMALNEGO")
                     df = pd.read_csv(f"{result_path}/{model_normal_file_name}", sep=';')
                     h_normal = df[['x1', 'x2', 'x3', 'x4']].T.values
                     h_model_normal = df[['x1_pred', 'x2_pred', 'x3_pred', 'x4_pred']].T.values
@@ -286,6 +283,7 @@ def main_function(
             time_change=n_sampl//4
 
             if model_file_name is None:
+                print(f"SYMULACJA SCANARIUSZA {attack_scenario}")
 
                 simulation = Simulation(h_max, h_min, qa_max, qb_max, gamma_a, gamma_b,
                                         S, a, c, T, T_s, kp, Ti, Td, tau_u, tau_y, qd, cyberattack_detector=cyberattack_detector
@@ -308,9 +306,6 @@ def main_function(
                                             param_name=param_name,
                                             param_value=param_value,
                                             time_change=time_change)
-                print(np.shape(hi))
-                print(np.shape(attack_signali))
-                print(np.shape(ei))
                 df = pd.DataFrame(np.concatenate((hi, yi, zi, qi, ei, h_modeli, attack_signali.T), axis=0), index= ['x1', 'x2', 'x3', 'x4', 'y1', 'y2', 'y3', 'y4', 'z1', 'z2', 'q_A', 'q_B', 'e1', 'e2', 'x1_pred', 'x2_pred', 'x3_pred', 'x4_pred', 'attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']).T
                 for i in range(1, np.shape(hi)[0]+1):
                     if residual_calc_func == 'rmse':
@@ -326,6 +321,7 @@ def main_function(
                 if save_mode:
                     df.to_csv(f"{result_path}/model_{model_type}_rec_{recursion_mode}_att{attack_scenario}_tank{num_tank}_value{attack_value}_tau_y{tau_y_ca}_window{window_detection}_met_{threshold_method}_res_calc_{residual_calc_func}_nstd{kwargs['n_std']}_perc{kwargs['percentile']}_noise_{noise_sigma}_seed{seed}.csv", sep=';', index=False)
             else:
+                print(f"WCZYTYWANIE DANYCH Z PLIKÓW ZE SCENARIUSZA {attack_scenario}")
                 df = pd.read_csv(f"{result_path}/{model_file_name}", sep=';')
                 hi = df[['x1', 'x2', 'x3', 'x4']].T.values
                 yi = df[['y1', 'y2', 'y3', 'y4']].T.values
@@ -334,10 +330,11 @@ def main_function(
                 ei = df[['e1', 'e2']].values
                 h_modeli = df[['x1_pred', 'x2_pred', 'x3_pred', 'x4_pred']].T.values
                 if detection_from_file:
+                    print(f"DETEKCJA Z PLIKU ZE SCENARIUSZA {attack_scenario}")
                     attack_signali = df[['attack_signal1', 'attack_signal2', 'attack_signal3', 'attack_signal4']].values
                     residualsi = df[['res1', 'res2', 'res3', 'res4']].T.values
                 else:
-                    print("zaciągamy przewidywania modeli z plików, ale wyliczamy wartości graniczne i wykrywamy cyberataki na podstawie aktualnych danych") 
+                    print("ZACIĄGAMY PRZEWIDYWANIA MODELI Z PLIKÓW, ALE WYLICZAMY WARTOŚCI GRANICZNE I WYKRYWAMY CYBERATAKI NA PODSTAWIE AKTUALNYCH DANYCH") 
                     for i in range(1, np.shape(hi)[0]+1):
                         if residual_calc_func == 'rmse':
                             df[f'res{i}'] = rmse(df[f'y{i}'], df[f'x{i}_pred'], window_detection)
@@ -457,18 +454,14 @@ def main_function(
 
                 indices = np.where((attack_binary[:-1] == 0) & (attack_binary[1:] == 1))[0]
                 attack_time = indices[0]
-                print(f"{attack_time=}")
                 indices = np.where((attack_signal_i_1tank[:-1] == 0) & (attack_signal_i_1tank[1:] == 1))[0]
                 num_active_alarm = len(indices)
-                print(indices)
                 indices = indices[indices>attack_time]
-                print(indices)
                 if len(indices) == 0:
                     attack_time_delay = None
                 else:
                     detected_attack_time = indices[0]
                     attack_time_delay = detected_attack_time - attack_time
-                print(attack_time_delay)
 
                 result_df.loc[model_type.upper()] = [attack_time_delay, round(recall, 4), round(fpr, 4), num_active_alarm]
                 result_df.index.name = 'Model'
@@ -555,12 +548,6 @@ def main_function(
 
                 for i, (residual_1model, model_type, attack_signali, thresholdi) in enumerate(zip(residuals, model_type_tuple, attack_signal, threshold)):
                     ax1 = plt.subplot(len(model_type_tuple), 1, i + 1)
-                    
-                    print(f"num_tank={num_tank}")
-                    print(f"residual_1model={residual_1model}")
-                    print(f"np.shape(residual_1model)={np.shape(residual_1model)}")
-                    # print(f"len(residual_1model) = {len(residual_1model)}")
-                    # print(f"np.shape(residual_1model[0]) = {np.shape(residual_1model[0])}")
 
                     line1, = ax1.plot(time, residual_1model[num_tank, :], label=f'${residual_calc_func.upper()}_{num_tank+1}$')
 
