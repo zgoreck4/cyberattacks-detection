@@ -8,9 +8,54 @@ import warnings
 import keras
 from ..models import reverse_min_max_scale
 
-g = 981 # cm/s^2
+g = 981  # cm/s^2, gravitational acceleration in centimeters per second squared
 
 class Simulation:
+    """
+    A class that simulates a four-tank system, including sensor measurements, control (PID), 
+    and the possibility of cyberattacks on the system.
+
+    Attributes
+    ----------
+    qa_max : float
+        Maximum flow rate for tank A.
+    qb_max : float
+        Maximum flow rate for tank B.
+    Ts : float
+        Sampling time.
+    tau_u : int
+        Time delay for the control input.
+    n_sampl : int
+        Number of samples in the simulation.
+    tau_y : int
+        Time delay for the sensor output.
+    process : FourTankProcess
+        The four-tank process object representing the system's state and dynamics.
+    sensor : Sensor
+        The sensor object that measures the tank levels.
+    cyberattack_detector : object or None
+        The cyberattack detection system, or None if detection is not enabled.
+    pid_a : PIDController
+        PID controller for tank A.
+    pid_b : PIDController
+        PID controller for tank B.
+
+    Methods
+    -------
+    _set_init_state(h0, attack_scenario, num_tank, **kwargs)
+        Initializes the state of the simulation.
+    _calc_q(t)
+        Calculates the control inputs (flow rates) for the system.
+    _prepare_recurrent_model_inputs(k, model, h_idx, recursion_mode=False)
+        Prepares inputs for a recurrent model.
+    _prepare_model_inputs(k, model, recursion_mode=False)
+        Prepares inputs for the predictive model.
+    run(h0, close_loop=True, model_list=None, recursion_mode=False, attack_scenario=None, 
+        attack_time=None, num_tank=None, variability=False, param_name=None, param_value=None, 
+        time_change=None, **kwargs)
+        Runs the simulation for the given parameters.
+    """
+    
     def __init__(self,
                 h_max: float, 
                 h_min: float, 
@@ -32,54 +77,139 @@ class Simulation:
                 clip=False,
                 cyberattack_detector=None,
                 ) -> None:
-        
+        """
+        Initializes the Simulation object with the given parameters.
+
+        Parameters
+        ----------
+        h_max : float
+            Maximum height for each tank.
+        h_min : float
+            Minimum height for each tank.
+        qa_max : float
+            Maximum flow rate for tank A.
+        qb_max : float
+            Maximum flow rate for tank B.
+        gamma_a : float
+            Flow rate constant for tank A.
+        gamma_b : float
+            Flow rate constant for tank B.
+        S : NDArray[np.float64]
+            Array representing the tank volumes.
+        a : NDArray[np.float64]
+            Array of cross-sectional areas of the outflow openings for each tank.
+        c : NDArray[np.float64]
+            Sensor coefficients.
+        T : int
+            Total number of time steps.
+        Ts : int
+            Sampling time.
+        kp : float
+            Proportional gain for the PID controller.
+        Ti : float
+            Integral time for the PID controller.
+        Td : float
+            Derivative time for the PID controller.
+        tau_u : int, optional
+            Time delay for the control input (default is 0).
+        tau_y : int, optional
+            Time delay for the output (default is 0).
+        qd : NDArray[np.float64], optional
+            Array of disturbances (default is an array with a single 0).
+        clip : bool, optional
+            Whether to clip the tank levels (default is False).
+        cyberattack_detector : object or None, optional
+            The cyberattack detection system (default is None).
+        """
         self.qa_max = qa_max
         self.qb_max = qb_max
         self.Ts = Ts
         self.tau_u = tau_u
-        self.n_sampl = T//Ts+1
+        self.n_sampl = T // Ts + 1
         self.tau_u = tau_u
         self.tau_y = tau_y
 
+        # Initialize the process (FourTankProcess), sensor (Sensor), and cyberattack detector (if provided)
         self.process = FourTankProcess(self.n_sampl, self.Ts, a, S, gamma_a, gamma_b, h_max, h_min, self.tau_y, self.tau_u, clip, qd)
-        self.sensor  = Sensor(self.n_sampl, self.tau_y, c)
+        self.sensor = Sensor(self.n_sampl, self.tau_y, c)
         self.cyberattack_detector = cyberattack_detector
 
         self.F = np.array(
             [[1, 0, 0, 0],
             [0, 1, 0, 0]])
 
+        # Initialize PID controllers for both tanks
         self.pid_a = PIDController(kp, Ti, Td, self.Ts, self.n_sampl)
         self.pid_b = PIDController(kp, Ti, Td, self.Ts, self.n_sampl)
 
-    
-    def _set_init_state(self, h0, attack_scenario, num_tank, **kwargs):
+    def _set_init_state(self, h0, attack_scenario, num_tank, **kwargs) -> None:
+        """
+        Initializes the state of the simulation with given initial tank heights.
+
+        Parameters
+        ----------
+        h0 : NDArray
+            Initial heights of the tanks.
+        attack_scenario : int or None
+            The attack scenario to simulate, or None if no attack is applied.
+        num_tank : int
+            The tank number for the attack scenario.
+        """
+        # Set initial tank levels
         self.process.set_init_state(h0)
         self.z = self.F @ self.process.h
         self.sensor.set_init_state(self.process.h[:, :len(h0)])
-        # self.e = self.SP_h - self.z
+
+        # Initialize the cyberattack if specified
         if attack_scenario is not None:
             self.cyberattack = CyberAttack(self.process, self.sensor, attack_scenario, num_tank, **kwargs)
 
-    
-    def _calc_q(self, t):
+    def _calc_q(self, t: int) -> None:
+        """
+        Calculates the control inputs (flow rates) for the system.
+
+        Parameters
+        ----------
+        t : int
+            The current time step.
+        """
+        # Calculate the error (difference between setpoint and measured value)
         self.e[:, [t-1]] = self.SP_h[:, [t-1]] - self.z[:, [t-1]]
-        # TODO implementacja regulatora dla tau_u
-        # TODO implementacja dla szumu, bo może trzeba we wzorze na z użyć y zamiast h
+        
+        # Update the flow rates using PID controllers
         self.qa += self.pid_a.calc_dCV(self.SP_h[1, :], self.z[1, :], t-1)
         self.qb += self.pid_b.calc_dCV(self.SP_h[0, :], self.z[0, :], t-1)
+
+        # Ensure that flow rates are within limits
         self.qa = min(self.qa, self.qa_max)
         self.qa = max(self.qa, 0)
         self.qb = min(self.qb, self.qb_max)
         self.qb = max(self.qb, 0)
         self.q[:, [t-1]] = np.vstack((self.qa, self.qb))
 
-    
-    def _prepare_recurrent_model_inputs(self, k, model, h_idx, recursion_mode=False):
+    def _prepare_recurrent_model_inputs(self, k: int, model, h_idx: int, recursion_mode: bool = False) -> NDArray:
+        """
+        Prepares the inputs for the recurrent model at a specific time step.
+
+        Parameters
+        ----------
+        k : int
+            The current time step.
+        model : keras.Model
+            The recurrent model to use for prediction.
+        h_idx : int
+            The index of the tank for which to prepare the inputs.
+        recursion_mode : bool, optional
+            Whether the model is used in a recurrent mode (default is False).
+
+        Returns
+        -------
+        NDArray
+            The input data prepared for the model.
+        """
         inputs = []
         _, time_steps, num_features = model.input_shape
-        # model w przestrzeni stanu - tylko time_steps = 1
-        if num_features == 6:
+        if num_features == 6: # model in state space - only time_steps = 1
             inputs = self.q[:, [k-1]]
             if recursion_mode:
                 h_input = self.h_model[:, [k-1]]
@@ -207,7 +337,6 @@ class Simulation:
                 raise ValueError(f"Unknown feature: {feature}")
         return np.array([inputs])
 
-    
     def run(self,
             h0,
             close_loop=True,
@@ -220,7 +349,40 @@ class Simulation:
             param_name=None,
             param_value=None,
             time_change=None,
-            **kwargs):
+            **kwargs) -> tuple:
+        """
+        Runs the simulation over the specified time steps and applies the control system.
+
+        Parameters
+        ----------
+        h0 : NDArray
+            Initial heights for the tanks.
+        close_loop : bool, optional
+            Whether to use closed-loop control (default is True).
+        model_list : list of models, optional
+            A list of predictive models to use for simulation (default is None).
+        recursion_mode : bool, optional
+            Whether to use recursion in the model (default is False).
+        attack_scenario : int or None, optional
+            The attack scenario to simulate (default is None).
+        attack_time : int or None, optional
+            The time step at which the attack occurs (default is None).
+        num_tank : int or None, optional
+            The tank number affected by the attack (default is None).
+        variability : bool, optional
+            Whether to introduce variability in the parameters (default is False).
+        param_name : str, optional
+            The parameter name to vary (default is None).
+        param_value : float, optional
+            The value to assign to the parameter (default is None).
+        time_change : int or None, optional
+            The time step at which the parameter change occurs (default is None).
+
+        Returns
+        -------
+        tuple
+            The simulated tank heights, sensor measurements, output, flow rates, errors, and model predictions.
+        """
         self._set_init_state(h0, attack_scenario, num_tank, **kwargs)
 
         if close_loop:
@@ -238,8 +400,8 @@ class Simulation:
             self.h_model = self.process.h.copy()
 
         for t in range(max(self.tau_u, self.tau_y, 4), self.n_sampl):
-            if t%500 == 0:
-                print(F"krok: {t}/{self.n_sampl}")
+            if t % 500 == 0:
+                print(f"Krok: {t}/{self.n_sampl}")
             if close_loop:
                 self._calc_q(t)
             if (variability) and (t == time_change):
@@ -254,7 +416,7 @@ class Simulation:
                 self.cyberattack.apply_attack(t)
             self.z[:, [t]] = self.F @ self.sensor.y[:, [t]]
 
-            if (model_list is not None):
+            if model_list is not None:
                 h_model_t = []
                 for i, model in enumerate(model_list):
                     if isinstance(model, keras.Model):
@@ -273,16 +435,14 @@ class Simulation:
             if self.cyberattack_detector is not None:
                 self.cyberattack_detector.detect(self.sensor.y[:len(self.h_model)], self.h_model, t)
 
-
-        self.q[:, [self.n_sampl-1]] = np.nan
+        self.q[:, [self.n_sampl - 1]] = np.nan
         if close_loop:
-            self.e[:, [self.n_sampl-1]] = None
+            self.e[:, [self.n_sampl - 1]] = None
         if self.cyberattack_detector is not None:
-                attack_signal = np.array(self.cyberattack_detector.attack_signal)
-                expanded_attack_signal = np.empty((self.n_sampl, attack_signal.shape[1]), dtype=object)
-                expanded_attack_signal.fill(None)
-                # Copy the original array data into the new array
-                expanded_attack_signal[-attack_signal.shape[0]:, :] = attack_signal
+            attack_signal = np.array(self.cyberattack_detector.attack_signal)
+            expanded_attack_signal = np.empty((self.n_sampl, attack_signal.shape[1]), dtype=object)
+            expanded_attack_signal.fill(None)
+            expanded_attack_signal[-attack_signal.shape[0]:, :] = attack_signal
         else:
             expanded_attack_signal = None
 
