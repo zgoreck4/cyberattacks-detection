@@ -238,28 +238,28 @@ def main_function(
     kwargs = {'n_std': 3, 'percentile': 99}
 
     for window_detection, num_tank, recursion_mode, (threshold_method, value), attack_scenario in tqdm(product(window_detection_list, num_tank_list, recursion_mode_list, threshold_method_list, attack_scenario_list)):
-    """
-    Loop over different configurations to simulate tank behavior and detect cyberattacks.
+        """
+        Loop over different configurations to simulate tank behavior and detect cyberattacks.
 
-    Parameters
-    ----------
-    window_detection : int
-        The detection window size for residual calculation.
-    num_tank : int
-        The index of the tank to simulate.
-    recursion_mode : bool
-        Whether to use recursion in the simulation.
-    threshold_method : str
-        The method for threshold calculation ('percentile' or 'z-score').
-    value : float
-        The value associated with the threshold method (percentile or z-score).
-    attack_scenario : int
-        The attack scenario to simulate.
+        Parameters
+        ----------
+        window_detection : int
+            The detection window size for residual calculation.
+        num_tank : int
+            The index of the tank to simulate.
+        recursion_mode : bool
+            Whether to use recursion in the simulation.
+        threshold_method : str
+            The method for threshold calculation ('percentile' or 'z-score').
+        value : float
+            The value associated with the threshold method (percentile or z-score).
+        attack_scenario : int
+            The attack scenario to simulate.
 
-    Returns
-    -------
-    None
-    """
+        Returns
+        -------
+        None
+        """
         # Update threshold method parameters based on the configuration
         print(f"\nthreshold_met={threshold_method}")
         print(f"value={value}")
