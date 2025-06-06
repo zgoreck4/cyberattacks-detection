@@ -32,7 +32,7 @@ Celem projektu jest symulacja referencyjnego układu 4 zbiorników w stanie norm
 2. Utwórz i aktywuj środowisko conda:
 
     ```bash
-    conda env create -f env.yml
+    conda env create -f environment.yml
     conda activate cyberattacks_detection
     ```
 
